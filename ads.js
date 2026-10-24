@@ -11,7 +11,7 @@ window.Ads = (() => {
     // 本番の広告ユニット(AdMob の「ジャッカル」)。空の種類は本番ビルド(Google Play 用)では出さない
     production: {
       interstitial: 'ca-app-pub-6411535997477460/9150482656',
-      rewarded: '',
+      rewarded: 'ca-app-pub-6411535997477460/9556928335',
       banner: 'ca-app-pub-6411535997477460/1710976336',
     },
   };
