@@ -1145,7 +1145,7 @@
 
   // ---------- シェア(結果画面) ----------
   // 対応端末では成績画像つきで共有シートを開き、だめなら X・LINE・コピーで共有する
-  const SHARE_URL = /^https?:/.test(location.protocol) ? location.origin + location.pathname : '';
+  const SHARE_URL = 'https://techgym.jp/column/claude-code-game-jackal/'; // 紹介記事
   const shareEl = document.getElementById('share');
   const $id = (id) => document.getElementById(id);
   const navLabel = () => t(state.navUsed ? 'nav.on' : 'nav.off');
