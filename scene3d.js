@@ -352,9 +352,9 @@ window.Scene3D = (() => {
       return arm;
     };
     const armL = mkArm(0.35), armR = mkArm(-0.35);
-    // ボールを抱える位置(右脇)
+    // ボールを抱える位置(脇。左右は抱える側に合わせて毎フレーム決める)
     const carry = new THREE.Object3D();
-    carry.position.set(-0.2, 0.3, 0.2);
+    carry.position.set(-0.43, 0.27, 0.06);
     upper.add(carry);
     // 両手の間(ボールを拾う・掲げる位置)
     const hands = new THREE.Object3D();
@@ -682,8 +682,11 @@ window.Scene3D = (() => {
         if (p.crouch) { u.rotation.x = 0.35; b.position.y -= 0.08; r.armL.rotation.x -= 0.5; r.armR.rotation.x -= 0.5; }
         // ステップ: 体を倒して切り返す
         if (p.lean) b.rotation.z = -p.lean * 0.35;
-        // ボールを持っている: 右腕で抱える
-        if (p.hasBall) { r.armR.rotation.x = -0.9; r.armR.rotation.z = -0.6; }
+        // ボールを持っている: 抱える側の腕を体の外へ張り出す(背中側から見てもボールが見えるように)
+        if (p.hasBall) {
+          const side = p.carrySide || -1, arm = side > 0 ? r.armL : r.armR;
+          arm.rotation.x = -0.55; arm.rotation.z = side * 0.32;
+        }
       }
     }
     r.shadow.position.set(p.x, 0.03, -p.y);
@@ -702,13 +705,15 @@ window.Scene3D = (() => {
       ballMesh.position.set(p.x, 2.45 + Math.abs(Math.sin(state.time * 7)) * 0.12, -p.y);
       ballMesh.rotation.set(0, Math.PI - p.face + Math.PI / 2, 0);
     } else if (holder && holder.root.visible) {
+      const p = state.actors[ball.holder];
+      // 脇に抱えたボールは体の外側(右か左)にはみ出させる
+      const side = p.carrySide || -1;
+      holder.carry.position.x = side * 0.43;
       holder.root.updateMatrixWorld(true);
       const a = ball.atHands ? holder.hands : holder.carry;
       a.getWorldPosition(ballMesh.position);
-      const p = state.actors[ball.holder];
-      ballMesh.rotation.set(0, Math.PI - p.face, 0);
-      if (ball.atHands) ballMesh.rotation.x = 0;
-      else ballMesh.rotation.x = -0.4;
+      // 先を少し外へ向けて、後ろから見ても楕円の形が見えるようにする
+      ballMesh.rotation.set(ball.atHands ? 0 : -0.35, Math.PI - p.face + (ball.atHands ? 0 : -side * 0.45), 0);
     } else {
       ballMesh.position.set(ball.x, ball.z + BALL_R, -ball.y);
       // 楕円球は転がりながら向きが変わる

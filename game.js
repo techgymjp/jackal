@@ -266,7 +266,7 @@
     state.msg = null;
     const cf = p.type === 'flee' ? 0 : Math.PI; // ボールキャリアの向き(+y が 0)
     const A = actor(p.ax, p.ay, 0, { stamina: STAMINA_MAX, crouch: p.type === 'attack' });
-    const C = actor(p.cx, p.cy, cf, { hasBall: true, ai: 'run', stepT: 0 });
+    const C = actor(p.cx, p.cy, cf, { hasBall: true, carrySide: rng() < 0.5 ? -1 : 1, ai: 'run', stepT: 0 }); // carrySide: ボールを抱える側(-1 右脇 / +1 左脇)
     // 選手B は相手と並走している(相手の横 5〜6.5m)
     let bs = p.side;
     if (Math.abs(C.x + bs * 6) > HX - 2) bs = -bs;
@@ -279,7 +279,7 @@
     const o = (dx, dy) => actor(clamp(C.x + dx, -HX + 2, HX - 2), C.y - p.S * dy, cf);
     state.actors = {
       A, B, carrier: C, ref,
-      support: o(rand(-3, 3), rand(7, 9)),
+      support: o((rng() < 0.5 ? -1 : 1) * rand(4, 6), rand(7, 9)), // カメラの前をふさがないよう少し横に
       m1: m(-12, rand(-4, 2)), m2: m(13, rand(-4, 2)), m3: m(rand(-4, 4), -9 * p.S),
       o1: o(-9, 10), o2: o(10, 11), o3: o(rand(-4, 4), 15),
     };
@@ -866,9 +866,10 @@
     const base = useB && p.arrived ? p.Pb : P;
     state.view = {
       x: base.x, y: base.y, fx: F.x, fy: F.y,
-      back: useB ? 5.2 : 6.5, h: useB ? 2.7 : 2.9,
+      // 選手A のときは少し高くして、A の頭越しにボールキャリアが見えるようにする
+      back: useB ? 5.2 : 6.5, h: useB ? 2.7 : 3.6,
       // ジャッカル成功のあとは見上げて花火を見せる
-      pitch: state.phase === 'result' && state.lastResult && state.lastResult.ok && state.phaseT > 0.5 ? 0.17 : useB ? -0.13 : -0.04,
+      pitch: state.phase === 'result' && state.lastResult && state.lastResult.ok && state.phaseT > 0.5 ? 0.17 : useB ? -0.13 : -0.08,
       cut: !!state.viewCut,
     };
     state.viewCut = false;
