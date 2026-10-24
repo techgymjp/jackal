@@ -1,6 +1,6 @@
 'use strict';
 // ジャッカル — スタジアムの音(すべて Web Audio API で合成。音声ファイルは使わない)
-// 歓声・ため息・どよめき・拍手・指笛・チアホーン・応援・笛・タックルの衝撃音・花火の音
+// 歓声・ため息・どよめき・拍手・指笛・チアホーン・応援(太鼓)・笛・タックルの衝撃音・花火の音
 // 構成は techgymjp/center-fly の sound.js と同じ
 window.Sound = (() => {
   let AC = null, master = null, noiseBuf = null;
@@ -215,17 +215,15 @@ window.Sound = (() => {
     }
   }
 
-  // チアホーン: 低い短音「ブォッ」1 発
-  function horn() {
-    if (!AC) return;
-    const t0 = AC.currentTime + 0.02, dur = 0.38;
+  // チアホーン: 低い短音「ブォッ」(音程はいつも同じで、メロディにはしない)
+  function hornBlast(t0, g = 0.22, dest = master, dur = 0.34) {
     const out = AC.createGain();
     out.gain.setValueAtTime(0.0001, t0);
-    out.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
-    out.gain.setTargetAtTime(0.16, t0 + 0.05, 0.08);
+    out.gain.exponentialRampToValueAtTime(g, t0 + 0.02);
+    out.gain.setTargetAtTime(g * 0.72, t0 + 0.05, 0.08);
     out.gain.setTargetAtTime(0.0001, t0 + dur, 0.04);
     const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 1.5;
-    lp.connect(out).connect(master);
+    lp.connect(out).connect(dest);
     [98, 147, 196].forEach((f, i) => {
       const o = AC.createOscillator(); o.type = 'sawtooth';
       o.frequency.setValueAtTime(f * 0.95, t0);
@@ -233,6 +231,10 @@ window.Sound = (() => {
       o.detune.value = i % 2 ? 6 : -6;
       o.connect(lp); o.start(t0); o.stop(t0 + dur + 0.3);
     });
+  }
+  function horn() {
+    if (!AC) return;
+    hornBlast(AC.currentTime + 0.02, 0.22, master, 0.38);
   }
 
   // 花火の打ち上げと破裂
@@ -246,53 +248,18 @@ window.Sound = (() => {
     for (let i = 0; i < 5; i++) noiseShot({ t: t + rand(0.25, 1.3), dur: 0.03, type: 'highpass', f: 5000, g: rand(0.04, 0.12) });
   }
 
-  // ---------- 応援(オリジナル曲。トランペットと太鼓) ----------
+  // ---------- 応援(太鼓と手拍子のリズムに、低いチアホーンの短音。メロディはなし) ----------
   const EIGHTH = 60 / 144 / 2; // 144BPM の8分音符
-  // [音(MIDI), 長さ(8分音符の数)]  0 は休符
-  const MELODY = [
-    [72, 2], [72, 1], [74, 1], [76, 2], [72, 2],
-    [79, 3], [0, 1], [79, 2], [0, 2],
-    [77, 1], [76, 1], [74, 2], [76, 1], [77, 1], [79, 2],
-    [76, 4], [0, 4],
-    [81, 2], [81, 1], [79, 1], [77, 2], [76, 2],
-    [74, 1], [76, 1], [77, 2], [74, 2], [0, 2],
-    [72, 1], [74, 1], [76, 2], [79, 2], [83, 2],
-    [84, 4], [0, 4],
-  ];
+  // 16 拍のくり返し: 「ドン・ドン・ドン・ブォッ」×2、後半は「ドドドン・ブォッ・ブォッ」
   const STEPS = (() => {
     const steps = [];
-    let pos = 0;
-    for (const [n, l] of MELODY) { steps[pos] = { note: n, len: l }; pos += l; }
-    const melodyLen = pos, LOOP = melodyLen + 16;
-    for (let i = 0; i < LOOP; i++) {
-      steps[i] = steps[i] || {};
-      if (i < melodyLen) { steps[i].drum = i % 2 === 0; steps[i].clap = i % 2 === 0; }
-    }
-    // 間奏: 太鼓とメガホンの「ドン・ドン・ドドドン」
-    for (const k of [0, 2, 4, 5, 6, 8, 10, 12, 13, 14]) { steps[melodyLen + k].drum = true; steps[melodyLen + k].clap = true; }
+    for (let i = 0; i < 32; i++) steps.push({ drum: i % 2 === 0, clap: i % 2 === 0 });
+    for (const k of [6, 14, 22, 28, 30]) { steps[k].horn = true; steps[k].clap = false; }
+    for (const k of [20, 21]) steps[k].drum = true;
     return steps;
   })();
   const band = { on: false, next: 0, i: 0, level: -1 };
 
-  function brass(t0, midi, dur, g, dest = bandBus, detunes = [-7, 7]) {
-    const f = 440 * Math.pow(2, (midi - 69) / 12);
-    const out = AC.createGain();
-    out.gain.setValueAtTime(0.0001, t0);
-    out.gain.exponentialRampToValueAtTime(g, t0 + 0.03);
-    out.gain.setTargetAtTime(g * 0.7, t0 + 0.05, 0.08);
-    out.gain.setTargetAtTime(0.0001, t0 + dur - 0.05, 0.025);
-    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3;
-    lp.frequency.setValueAtTime(f * 1.5, t0);
-    lp.frequency.exponentialRampToValueAtTime(f * 7, t0 + 0.04);
-    lp.frequency.setTargetAtTime(f * 4, t0 + 0.07, 0.1);
-    lp.connect(out).connect(dest);
-    for (const d of detunes) {
-      const o = AC.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
-      const st = t0 + Math.random() * 0.015;
-      o.detune.setValueAtTime(d - 50, st); o.detune.linearRampToValueAtTime(d, st + 0.05);
-      o.connect(lp); o.start(st); o.stop(t0 + dur + 0.3);
-    }
-  }
   function drum(t0, g) {
     const o = AC.createOscillator(); o.type = 'sine';
     o.frequency.setValueAtTime(95, t0); o.frequency.exponentialRampToValueAtTime(45, t0 + 0.25);
@@ -306,20 +273,12 @@ window.Sound = (() => {
   function bandStart() { if (!AC || band.on) return; band.on = true; band.i = 0; band.next = AC.currentTime + 0.3; band.level = -1; }
   function bandStop() { band.on = false; if (bandBus) bandBus.gain.setTargetAtTime(0, AC.currentTime, 0.3); }
 
-  // 勝利のファンファーレ
+  // 試合終了: 低いチアホーンを「ブォッ・ブォッ・ブォーッ」(全プレー成功ならもう 1 回長く)
   function fanfare(perfect) {
     if (!AC) return;
-    const seq = perfect
-      ? [[72, 1], [76, 1], [79, 1], [84, 3], [79, 1], [84, 6]]
-      : [[67, 1], [72, 1], [76, 1], [79, 4]];
-    let t = AC.currentTime + 0.2;
-    const e = 0.16;
-    for (const [n, l] of seq) {
-      const dur = l * e;
-      brass(t, n, dur, 0.09, master);
-      brass(t, n - 12, dur, 0.035, master);
-      t += dur;
-    }
+    const t0 = AC.currentTime + 0.2;
+    const seq = perfect ? [[0, 0.3], [0.4, 0.3], [0.8, 0.9], [2.0, 0.3], [2.4, 1.2]] : [[0, 0.3], [0.4, 0.3], [0.8, 0.9]];
+    for (const [t, d] of seq) hornBlast(t0 + t, 0.2, master, d);
   }
   // ---------- 毎フレーム: 応援の音量とどよめき ----------
   function update(state) {
@@ -338,7 +297,7 @@ window.Sound = (() => {
       if (band.next < now) band.next = now + 0.05; // タブ復帰時などの遅れを捨てる
       while (band.next < now + 0.3) {
         const st = STEPS[band.i], t = band.next;
-        if (st.note) { brass(t, st.note, st.len * EIGHTH, 0.2); brass(t, st.note - 12, st.len * EIGHTH, 0.06, bandBus, [0]); }
+        if (st.horn) hornBlast(t, 0.3, bandBus);
         if (st.drum) drum(t, 0.5);
         if (st.clap) clap(t);
         band.next += EIGHTH;
