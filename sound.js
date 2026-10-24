@@ -223,13 +223,14 @@ window.Sound = (() => {
   function hornDrone() {
     const out = AC.createGain();
     out.gain.value = 0;
-    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300; lp.Q.value = 0.8;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 0.8;
     lp.connect(out).connect(master);
-    const voices = [[116.5, -12], [116.5, 9], [116.5, 3], [233, -7], [233, 11], [174.6, -4]];
+    // スマホのスピーカーでも聞こえるよう高め(ラ=440Hz 前後)にする
+    const voices = [[440, -12], [440, 9], [440, 3], [880, -7], [880, 11], [660, -4]];
     for (const [f, cents] of voices) {
       const o = AC.createOscillator(); o.type = 'sawtooth';
       o.frequency.value = f; o.detune.value = cents;
-      const g = AC.createGain(); g.gain.value = f > 200 ? 0.12 : 0.2;
+      const g = AC.createGain(); g.gain.value = f > 600 ? 0.1 : 0.18;
       const lfo = AC.createOscillator(); lfo.frequency.value = rand(0.15, 0.4);
       const lg = AC.createGain(); lg.gain.value = 0.08;
       lfo.connect(lg).connect(g.gain);
@@ -321,7 +322,7 @@ window.Sound = (() => {
         hornLv = Math.max(hornLv, clamp01(1 - (Math.hypot(C.x - a.A.x, C.y - a.A.y) - 3) / 11));
       }
     }
-    hornGain.gain.setTargetAtTime(0.17 * hornLv, now, hornLv > 0 ? 0.35 : 0.25);
+    hornGain.gain.setTargetAtTime(0.22 * hornLv, now, hornLv > 0 ? 0.35 : 0.25);
     ambientGain.gain.setTargetAtTime(state.paused ? 0.01 : 0.04, now, 0.3);
   }
 
