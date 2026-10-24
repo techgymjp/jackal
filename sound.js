@@ -1,10 +1,10 @@
 'use strict';
 // ジャッカル — スタジアムの音(すべて Web Audio API で合成。音声ファイルは使わない)
-// 歓声・ため息・どよめき・拍手・指笛・チアホーン・応援(太鼓)・笛・タックルの衝撃音・花火の音
+// 歓声・ため息・どよめき・拍手・指笛・チアホーン(長い一定の音)・応援(太鼓)・笛・タックルの衝撃音・花火の音
 // 構成は techgymjp/center-fly の sound.js と同じ
 window.Sound = (() => {
   let AC = null, master = null, noiseBuf = null;
-  let ambientGain = null, oohGain = null, bandBus = null;
+  let ambientGain = null, oohGain = null, hornGain = null, bandBus = null;
   let muted = false;
   const VOL = 0.7;
   // 同時に鳴る単発音の上限。超えた分は鳴らさない(音声処理が追いつかず音割れするのを防ぐ)
@@ -13,6 +13,7 @@ window.Sound = (() => {
   const voiceEnd = () => { voices--; };
   try { muted = localStorage.getItem('jackal.muted') === '1'; } catch (e) { /* 保存できない環境 */ }
   const rand = (a, b) => a + (b - a) * Math.random();
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
   // ユーザー操作のたびに呼ぶ。スマホは touchend / click の中でないと音が解禁されない
   function init() {
@@ -43,6 +44,8 @@ window.Sound = (() => {
       ambientGain = loopNoise([[700, 0.6, 1], [300, 0.7, 0.6]], 0.04);
       // 打球が上がったときの「おおおー」というどよめき(打球に合わせて音量を動かす)
       oohGain = loopNoise([[520, 3, 1], [950, 4, 0.6], [2400, 5, 0.12]], 0);
+      // チアホーン(長く鳴り続ける一定の音)。ピンチのときだけ音量を上げる
+      hornGain = hornDrone();
 
       // 応援団用のバス(球場の残響つき)
       bandBus = AC.createGain();
@@ -215,26 +218,25 @@ window.Sound = (() => {
     }
   }
 
-  // チアホーン: 低い短音「ブォッ」(音程はいつも同じで、メロディにはしない)
-  function hornBlast(t0, g = 0.22, dest = master, dur = 0.34) {
+  // チアホーン: 観客席のあちこちで吹く「ブォーーー」という長い一定の音。
+  // 同じ音程のホーンを何本も少しずつずらして重ね、それぞれ息つぎのように音量を揺らす。常に鳴らしておき、音量だけ動かす
+  function hornDrone() {
     const out = AC.createGain();
-    out.gain.setValueAtTime(0.0001, t0);
-    out.gain.exponentialRampToValueAtTime(g, t0 + 0.02);
-    out.gain.setTargetAtTime(g * 0.72, t0 + 0.05, 0.08);
-    out.gain.setTargetAtTime(0.0001, t0 + dur, 0.04);
-    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 1.5;
-    lp.connect(out).connect(dest);
-    [98, 147, 196].forEach((f, i) => {
+    out.gain.value = 0;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300; lp.Q.value = 0.8;
+    lp.connect(out).connect(master);
+    const voices = [[116.5, -12], [116.5, 9], [116.5, 3], [233, -7], [233, 11], [174.6, -4]];
+    for (const [f, cents] of voices) {
       const o = AC.createOscillator(); o.type = 'sawtooth';
-      o.frequency.setValueAtTime(f * 0.95, t0);
-      o.frequency.exponentialRampToValueAtTime(f, t0 + 0.04);
-      o.detune.value = i % 2 ? 6 : -6;
-      o.connect(lp); o.start(t0); o.stop(t0 + dur + 0.3);
-    });
-  }
-  function horn() {
-    if (!AC) return;
-    hornBlast(AC.currentTime + 0.02, 0.22, master, 0.38);
+      o.frequency.value = f; o.detune.value = cents;
+      const g = AC.createGain(); g.gain.value = f > 200 ? 0.12 : 0.2;
+      const lfo = AC.createOscillator(); lfo.frequency.value = rand(0.15, 0.4);
+      const lg = AC.createGain(); lg.gain.value = 0.08;
+      lfo.connect(lg).connect(g.gain);
+      o.connect(g).connect(lp);
+      o.start(); lfo.start();
+    }
+    return out;
   }
 
   // 花火の打ち上げと破裂
@@ -248,13 +250,12 @@ window.Sound = (() => {
     for (let i = 0; i < 5; i++) noiseShot({ t: t + rand(0.25, 1.3), dur: 0.03, type: 'highpass', f: 5000, g: rand(0.04, 0.12) });
   }
 
-  // ---------- 応援(太鼓と手拍子のリズムに、低いチアホーンの短音。メロディはなし) ----------
+  // ---------- 応援(太鼓と手拍子のリズム。メロディはなし) ----------
   const EIGHTH = 60 / 144 / 2; // 144BPM の8分音符
-  // 16 拍のくり返し: 「ドン・ドン・ドン・ブォッ」×2、後半は「ドドドン・ブォッ・ブォッ」
+  // 32 拍のくり返し: 「ドン・ドン・ドン・ドン」、後半に「ドドドン」
   const STEPS = (() => {
     const steps = [];
     for (let i = 0; i < 32; i++) steps.push({ drum: i % 2 === 0, clap: i % 2 === 0 });
-    for (const k of [6, 14, 22, 28, 30]) { steps[k].horn = true; steps[k].clap = false; }
     for (const k of [20, 21]) steps[k].drum = true;
     return steps;
   })();
@@ -273,13 +274,6 @@ window.Sound = (() => {
   function bandStart() { if (!AC || band.on) return; band.on = true; band.i = 0; band.next = AC.currentTime + 0.3; band.level = -1; }
   function bandStop() { band.on = false; if (bandBus) bandBus.gain.setTargetAtTime(0, AC.currentTime, 0.3); }
 
-  // 試合終了: 低いチアホーンを「ブォッ・ブォッ・ブォーッ」(全プレー成功ならもう 1 回長く)
-  function fanfare(perfect) {
-    if (!AC) return;
-    const t0 = AC.currentTime + 0.2;
-    const seq = perfect ? [[0, 0.3], [0.4, 0.3], [0.8, 0.9], [2.0, 0.3], [2.4, 1.2]] : [[0, 0.3], [0.4, 0.3], [0.8, 0.9]];
-    for (const [t, d] of seq) hornBlast(t0 + t, 0.2, master, d);
-  }
   // ---------- 毎フレーム: 応援の音量とどよめき ----------
   function update(state) {
     if (!AC) return;
@@ -297,7 +291,6 @@ window.Sound = (() => {
       if (band.next < now) band.next = now + 0.05; // タブ復帰時などの遅れを捨てる
       while (band.next < now + 0.3) {
         const st = STEPS[band.i], t = band.next;
-        if (st.horn) hornBlast(t, 0.3, bandBus);
         if (st.drum) drum(t, 0.5);
         if (st.clap) clap(t);
         band.next += EIGHTH;
@@ -316,6 +309,19 @@ window.Sound = (() => {
       else if (state.phase === 'loose') ooh = state.play && state.play.spilled ? 0.42 : 0.28;
     }
     oohGain.gain.setTargetAtTime(ooh, now, state.phase === 'chase' ? 0.25 : 0.08);
+
+    // チアホーン: ボールキャリアが選手A に向かって近づいてくるとき、自陣のトライラインに近づいたときに鳴らす
+    let hornLv = 0;
+    const p = state.play, C = a && a.carrier;
+    const running = state.phase === 'chase' || (state.phase === 'result' && p && !p.tackled);
+    if (!state.paused && running && C && C.mode !== 'tackled') {
+      const tryDist = 50 - C.y * p.S;                                  // 自陣トライラインまでの距離
+      hornLv = clamp01(1 - (tryDist - 4) / 22);
+      if (p.type === 'attack' && (C.y - a.A.y) * -p.S > -1) {          // こちらに向かってくる間
+        hornLv = Math.max(hornLv, clamp01(1 - (Math.hypot(C.x - a.A.x, C.y - a.A.y) - 3) / 11));
+      }
+    }
+    hornGain.gain.setTargetAtTime(0.17 * hornLv, now, hornLv > 0 ? 0.35 : 0.25);
     ambientGain.gain.setTargetAtTime(state.paused ? 0.01 : 0.04, now, 0.3);
   }
 
@@ -331,6 +337,6 @@ window.Sound = (() => {
     init, update, setMuted, suspend, resume,
     get muted() { return muted; },
     get ready() { return !!AC && AC.state === 'running'; },
-    thud, lunge, whoosh, bounce, grab, whistle, cheer, sigh, horn, launch, boom, fanfare,
+    thud, lunge, whoosh, bounce, grab, whistle, cheer, sigh, launch, boom,
   };
 })();

@@ -591,7 +591,6 @@
     Sound.grab();
     Sound.whistle();
     Sound.cheer(great ? 1.6 : 1.25, great ? 5 : 4);
-    Sound.horn();
     let n = great ? 7 : 5;
     if (milestone) {
       n += 4;
@@ -854,9 +853,8 @@
     }
     const perfect = state.jackals === TOTAL;
     Sound.whistle(1.2);
-    Sound.fanfare(perfect);
     Sound.cheer(perfect ? 1.6 : 0.9, perfect ? 6 : 3);
-    if (perfect) { Sound.horn(); fireworks(16, true, 0.35); } else if (state.jackals >= 14) fireworks(6, false, 0.4);
+    if (perfect) { fireworks(16, true, 0.35); } else if (state.jackals >= 14) fireworks(6, false, 0.4);
   }
 
   // ---------- 描画(2D オーバーレイ) ----------
