@@ -93,11 +93,14 @@
     const r = canvas.getBoundingClientRect();
     return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
   }
+  // 一番近いボタン(スマホは指が太いので、ボタンの外側も少し広めに反応させる)
   function hitButton(p) {
+    let best = null, bd = Infinity;
     for (const [name, b] of Object.entries(BTN)) {
-      if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 8) return name;
+      const d = Math.hypot(p.x - b.x, p.y - b.y) - b.r;
+      if (d < bd) { bd = d; best = name; }
     }
-    return null;
+    return bd <= (isTouch ? 18 : 8) ? best : null;
   }
   function setRing(p) {
     const dx = p.x - RING.x, dy = p.y - RING.y;
@@ -115,12 +118,12 @@
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
     const p = canvasPos(e);
-    if (Math.hypot(p.x - MUTE.x, p.y - MUTE.y) <= MUTE.r + 6) {
+    if (Math.hypot(p.x - MUTE.x, p.y - MUTE.y) <= MUTE.r + 8) {
       Sound.setMuted(!Sound.muted);
       pointers.set(e.pointerId, 'none');
       return;
     }
-    if (Math.abs(p.x - NAVBTN.x) <= NAVBTN.w / 2 + 4 && Math.abs(p.y - NAVBTN.y) <= NAVBTN.h / 2 + 6) {
+    if (Math.abs(p.x - NAVBTN.x) <= NAVBTN.w / 2 + 6 && Math.abs(p.y - NAVBTN.y) <= NAVBTN.h / 2 + 8) {
       toggleNav();
       pointers.set(e.pointerId, 'none');
       return;
@@ -1006,12 +1009,12 @@
     ctx.fillText(t('ring.back'), RING.x, RING.y + RING.r + 15);
     const kx = RING.x + mx * RING.r * 0.6, ky = RING.y - my * RING.r * 0.6;
     ctx.fillStyle = mag > 0.1 ? '#ffe14d' : 'rgba(255,255,255,0.6)';
-    ctx.beginPath(); ctx.arc(kx, ky, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(kx, ky, RING.r * 0.17, 0, Math.PI * 2); ctx.fill();
     if (isB) {
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 13px sans-serif';
-      ctx.fillText(t('ring.auto'), RING.x, RING.y + 5);
+      ctx.font = `bold ${Math.round(RING.r * 0.14)}px sans-serif`;
+      ctx.fillText(t('ring.auto'), RING.x, RING.y + 5, RING.r * 1.8);
     }
     ctx.restore();
 
@@ -1032,8 +1035,10 @@
       if (name !== 'dash') {
         const ang = name === 'front' ? -Math.PI / 2 : name === 'left' ? Math.PI : 0;
         ctx.save();
-        ctx.translate(b.x + Math.cos(ang) * (b.r - 11), b.y + Math.sin(ang) * (b.r - 11));
+        const ak = b.r / 46;
+        ctx.translate(b.x + Math.cos(ang) * (b.r - 11 * ak), b.y + Math.sin(ang) * (b.r - 11 * ak));
         ctx.rotate(ang);
+        ctx.scale(ak, ak);
         ctx.fillStyle = on ? '#222' : '#ffe14d';
         ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-5, -7); ctx.lineTo(-5, 7); ctx.closePath(); ctx.fill();
         ctx.restore();
@@ -1041,14 +1046,15 @@
       const [l1, l2] = btnLabel(name);
       ctx.fillStyle = on ? '#222' : '#fff';
       ctx.textAlign = 'center';
+      const fk = b.r / 46;
       if (l2) {
-        ctx.font = 'bold 17px sans-serif';
-        ctx.fillText(l1, b.x, b.y - 2);
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillText(l2, b.x, b.y + 13, b.r * 1.6);
+        ctx.font = `bold ${Math.round(17 * fk)}px sans-serif`;
+        ctx.fillText(l1, b.x, b.y - 2 * fk, b.r * 1.5);
+        ctx.font = `bold ${Math.round(11 * fk)}px sans-serif`;
+        ctx.fillText(l2, b.x, b.y + 13 * fk, b.r * 1.6);
       } else {
-        ctx.font = 'bold 15px sans-serif';
-        ctx.fillText(l1, b.x, b.y + 4);
+        ctx.font = `bold ${Math.round(15 * fk)}px sans-serif`;
+        ctx.fillText(l1, b.x, b.y + 4 * fk);
       }
       if (!isTouch) { ctx.font = '10px sans-serif'; ctx.fillText(b.key, b.x, b.y + 27); }
     }
@@ -1064,7 +1070,7 @@
       const sc = 1 + Math.max(0, 0.25 - p.t) * 1.5;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.translate(W / 2, 200 + line * 56 - p.t * 14);
+      ctx.translate(W / 2, (isTouch ? 250 : 200) + line * 56 - p.t * 14);
       ctx.scale(sc, sc);
       ctx.font = `900 ${p.size}px sans-serif`;
       ctx.lineWidth = 6;
@@ -1086,10 +1092,11 @@
     ctx.font = 'bold 20px sans-serif';
     const w = ctx.measureText(text).width + 36;
     ctx.fillStyle = m.key === 'msg.loose' ? 'rgba(160,60,0,0.75)' : 'rgba(0,0,0,0.55)';
-    ctx.fillRect(W / 2 - w / 2, 104, w, 36);
+    const my = isTouch ? 158 : 104; // スマホは上のボタンが大きいので少し下げる
+    ctx.fillRect(W / 2 - w / 2, my, w, 36);
     ctx.fillStyle = blink ? '#ffe14d' : '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText(text, W / 2, 129);
+    ctx.fillText(text, W / 2, my + 25);
     ctx.restore();
   }
 
@@ -1280,15 +1287,19 @@
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = state.nav ? '#222' : '#fff';
-    ctx.font = 'bold 13px sans-serif';
+    ctx.font = `bold ${Math.round(h * 0.43)}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(t('nav.btn', { s: state.nav ? 'ON' : 'OFF' }), x, y + 5);
+    ctx.fillText(t('nav.btn', { s: state.nav ? 'ON' : 'OFF' }), x, y + h * 0.16);
     ctx.restore();
   }
 
   function drawMute() {
-    const { x, y, r } = MUTE;
     ctx.save();
+    // アイコンは半径 20 で描いて、ボタンの大きさに合わせて拡大する
+    const k = MUTE.r / 20;
+    ctx.translate(MUTE.x, MUTE.y);
+    ctx.scale(k, k);
+    const x = 0, y = 0, r = 20;
     if (!Sound.muted && !Sound.ready && state.phase !== 'title' && state.phase !== 'over') {
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
       ctx.fillRect(x - 84, y + 26, 168, 24);
@@ -1369,11 +1380,24 @@
     // 2D の表示は描画解像度を抑えめに(スマホは 1.5 倍まで)
     const dpr = Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2);
     W = Math.round(H * r.width / r.height);
-    // 右側のボタン類は右端に合わせる
-    const cx = W - 175;
-    BTN.front.x = cx; BTN.dash.x = cx; BTN.left.x = cx - 92; BTN.right.x = cx + 92;
-    MUTE.x = W / 2 + 116;
-    NAVBTN.x = MUTE.x + 64;
+    // 右側のボタン類は右端に合わせる。スマホは指で押しやすいよう大きくする
+    if (isTouch) {
+      Object.assign(RING, { x: 168, y: 478, r: 122, dead: 16 });
+      const cx = W - 232;
+      Object.assign(BTN.front, { x: cx, y: 318, r: 70 });
+      Object.assign(BTN.left, { x: cx - 142, y: 456, r: 70 });
+      Object.assign(BTN.right, { x: cx + 142, y: 456, r: 70 });
+      Object.assign(BTN.dash, { x: cx, y: 578, r: 56 });
+      Object.assign(MUTE, { y: 42, r: 27 });
+      Object.assign(NAVBTN, { y: 42, w: 104, h: 42 });
+      MUTE.x = W / 2 + 90;
+      NAVBTN.x = MUTE.x + 92;
+    } else {
+      const cx = W - 175;
+      BTN.front.x = cx; BTN.dash.x = cx; BTN.left.x = cx - 92; BTN.right.x = cx + 92;
+      MUTE.x = W / 2 + 116;
+      NAVBTN.x = MUTE.x + 64;
+    }
     overlayScale = (r.height / H) * dpr;
     canvas.width = Math.round(W * overlayScale);
     canvas.height = Math.round(H * overlayScale);

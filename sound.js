@@ -1,6 +1,6 @@
 'use strict';
 // ジャッカル — スタジアムの音(すべて Web Audio API で合成。音声ファイルは使わない)
-// 歓声・ため息・どよめき・拍手・指笛・エアホーン・応援・笛・タックルの衝撃音・花火の音
+// 歓声・ため息・どよめき・拍手・指笛・チアホーン・応援・笛・タックルの衝撃音・花火の音
 // 構成は techgymjp/center-fly の sound.js と同じ
 window.Sound = (() => {
   let AC = null, master = null, noiseBuf = null;
@@ -215,26 +215,24 @@ window.Sound = (() => {
     }
   }
 
-  // エアホーン「パッ・パッ・パーーー」
-  function horn(pattern = [[0, 0.16], [0.24, 0.16], [0.48, 0.9]]) {
+  // チアホーン: 低い短音「ブォッ」1 発
+  function horn() {
     if (!AC) return;
-    for (const [t, dur] of pattern) {
-      const t0 = AC.currentTime + t;
-      const out = AC.createGain();
-      out.gain.setValueAtTime(0.0001, t0);
-      out.gain.exponentialRampToValueAtTime(0.16, t0 + 0.025);
-      out.gain.setTargetAtTime(0.12, t0 + 0.05, 0.1);
-      out.gain.setTargetAtTime(0.0001, t0 + dur, 0.04);
-      const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.Q.value = 2;
-      lp.connect(out).connect(master);
-      [311, 392, 466, 622].forEach((f, i) => {
-        const o = AC.createOscillator(); o.type = 'sawtooth';
-        o.frequency.setValueAtTime(f * 0.94, t0);
-        o.frequency.exponentialRampToValueAtTime(f, t0 + 0.04);
-        o.detune.value = i % 2 ? 7 : -7;
-        o.connect(lp); o.start(t0); o.stop(t0 + dur + 0.3);
-      });
-    }
+    const t0 = AC.currentTime + 0.02, dur = 0.38;
+    const out = AC.createGain();
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
+    out.gain.setTargetAtTime(0.16, t0 + 0.05, 0.08);
+    out.gain.setTargetAtTime(0.0001, t0 + dur, 0.04);
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 1.5;
+    lp.connect(out).connect(master);
+    [98, 147, 196].forEach((f, i) => {
+      const o = AC.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f * 0.95, t0);
+      o.frequency.exponentialRampToValueAtTime(f, t0 + 0.04);
+      o.detune.value = i % 2 ? 6 : -6;
+      o.connect(lp); o.start(t0); o.stop(t0 + dur + 0.3);
+    });
   }
 
   // 花火の打ち上げと破裂
