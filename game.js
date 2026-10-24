@@ -255,11 +255,11 @@
       play.feint = lv > 0.2 && rng() < 0.15 + 0.5 * lv; // フェイント(逆に振ってから切り返す)
       play.stepV = 5.0 + 1.6 * lv;
     }
-    // こぼれ球: 転がる向き(B から見た角度)・距離とイレギュラーバウンド
-    play.spillAng = rand(-1.9, 1.9);
+    // こぼれ球: 倒れた相手から選手B のほうへ転がる(B から見た角度。0 = 奥、π = 手前の B のほう)・距離とイレギュラーバウンド
+    play.spillAng = Math.PI + rand(-0.9, 0.9);
     play.spillDist = rand(1.8, 3.6) + lv * 0.8;
     play.hop = lv > 0.3 && rng() < 0.12 + 0.4 * lv ? (rng() < 0.5 ? -1 : 1) * rand(1.1, 1.8) : 0;
-    play.window = 2.0 - 0.7 * lv; // こぼれてから相手が拾うまでの時間
+    play.window = 1.5 - 0.5 * lv; // こぼれてから相手が拾うまでの時間
     return play;
   }
 
@@ -475,7 +475,7 @@
     Sound.whoosh();
     // 相手のサポートが拾いに来る(タックル地点の奥から)
     const S = state.actors.support;
-    S.x = clamp(p.T.x + rand(-2, 2), -HX + 1, HX - 1); S.y = p.T.y - p.S * rand(6.5, 8);
+    S.x = clamp(p.T.x + rand(-2, 2), -HX + 1, HX - 1); S.y = p.T.y - p.S * rand(3.5, 5);
     S.vx = 0; S.vy = p.S * 3;
     S.mode = 'run';
   }
