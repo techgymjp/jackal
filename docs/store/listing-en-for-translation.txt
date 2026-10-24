@@ -1,0 +1,50 @@
+Jackal - English source text for machine translation (Google Play store listing)
+
+This version uses short, plain sentences without idioms or slang, so that automatic translation
+into other languages stays accurate. Keep the game name "Jackal" untranslated.
+
+[App name] (max 30 characters)
+Jackal: Rugby Turnover
+
+[Short description] (max 80 characters)
+Tackle the runner. Then get the loose ball first. A 3D rugby game.
+
+[Full description] (max 4000 characters)
+You play rugby in a stadium at night. A player from the other team runs with the ball. Stop him with a tackle. Then take the ball away from his team. In rugby, this is called a "jackal". There are 20 plays in one game.
+
+■ PLAYER A: TACKLE THE RUNNER
+• Sometimes the runner runs away from you. Run after him. When you are close, press the forward tackle button.
+• Sometimes the runner runs toward you. Just before he reaches you, he steps to the left or to the right. Press the tackle button for that side.
+• If you tackle too early, he runs past you. In later plays, he also tries to trick you.
+• When the runner gets close to the try line, the crowd blows horns.
+
+■ PLAYER B: GET THE LOOSE BALL
+• After a good tackle, you control Player B. Player B was running next to the runner.
+• A tackled player must let go of the ball. The ball rolls on the ground.
+• Run to the ball. Touch it before the other team does. Then you win the ball.
+• In later plays, the ball bounces in a new direction.
+
+■ 3D VIEW FROM BEHIND YOUR PLAYER
+• You see the stadium from behind your player.
+• You can see the crowd, the goal posts, the referee and both teams.
+• The game shows the tackle in slow motion.
+• A small map shows the players and the ball.
+
+■ CHEERS AND FIREWORKS
+• The crowd plays drums and claps.
+• When you win the ball, you hear a whistle and a big cheer, and you see fireworks.
+• If you are fast, you get more points.
+• After 5 wins in a row, you see more fireworks.
+
+■ EASY CONTROLS
+• Move with the round control on the left.
+• Use the buttons on the right to tackle forward, left or right, and to run faster.
+• Player B only moves and runs faster. He takes the ball when he touches it.
+• Turn on NAV for help. NAV shows when your tackle will reach the runner. It also shows where the ball will roll.
+
+■ MORE
+• You get a rank at the end of the game.
+• You can share your score with friends.
+• If you lose a play, you can watch an ad and play it again. You can do this up to 5 times in one game.
+• You can play without the internet. Ads and sharing need the internet.
+• The game is in English and Japanese.
