@@ -1399,7 +1399,7 @@
   const redoEl = $id('redo');
   for (const ev of ['pointerdown', 'pointerup']) redoEl.addEventListener(ev, (e) => e.stopPropagation());
   function offerRedo() {
-    if (!Ads.available || state.redoUsed >= REDO_MAX) return;
+    if (!Ads.canReward || state.redoUsed >= REDO_MAX) return;
     Object.assign(redo, { active: true, busy: false, t: REDO_WAIT });
     $id('redoWatch').disabled = false;
     $id('redoWatch').textContent = t('redo.watch');

@@ -8,12 +8,11 @@ window.Ads = (() => {
       rewarded: 'ca-app-pub-3940256099942544/5224354917',
       banner: 'ca-app-pub-3940256099942544/6300978111',
     },
-    // 本番の広告ユニット(AdMob の「ジャッカル」)。作成したら ID を入れる。
-    // 空のあいだは本番ビルド(Google Play 用)では広告を出さない
+    // 本番の広告ユニット(AdMob の「ジャッカル」)。空の種類は本番ビルド(Google Play 用)では出さない
     production: {
-      interstitial: '',
+      interstitial: 'ca-app-pub-6411535997477460/9150482656',
       rewarded: '',
-      banner: '',
+      banner: 'ca-app-pub-6411535997477460/1710976336',
     },
   };
   const RETRY_MS = 20000;      // 読み込みに失敗したら少し待って再挑戦する
@@ -22,8 +21,9 @@ window.Ads = (() => {
   let AdMob = native && cap.Plugins ? cap.Plugins.AdMob : null;
   const testing = window.AD_MODE !== 'production';
   const ids = testing ? UNITS.test : UNITS.production;
-  // 本番の広告ユニット ID がまだないときは広告を使わない
-  if (!ids.interstitial) AdMob = null;
+  // 広告ユニット ID がある種類だけ使う(1 つもなければ広告を使わない)
+  const has = (kind) => !!ids[kind];
+  if (!has('interstitial') && !has('rewarded') && !has('banner')) AdMob = null;
 
   let ready = false;           // 広告をリクエストしてよい状態（初期化と同意確認が済んだ）
   let showing = false;
@@ -32,14 +32,14 @@ window.Ads = (() => {
 
   // 広告の種類ごとの読み込み状態
   const slots = {
-    inter: { loaded: false, pending: null, load: () => AdMob.prepareInterstitial({ adId: ids.interstitial, isTesting: testing }) },
-    reward: { loaded: false, pending: null, load: () => AdMob.prepareRewardVideoAd({ adId: ids.rewarded, isTesting: testing }) },
+    inter: { unit: 'interstitial', loaded: false, pending: null, load: () => AdMob.prepareInterstitial({ adId: ids.interstitial, isTesting: testing }) },
+    reward: { unit: 'rewarded', loaded: false, pending: null, load: () => AdMob.prepareRewardVideoAd({ adId: ids.rewarded, isTesting: testing }) },
   };
 
   // 読み込みを始め、読み込めたら true で resolve する Promise を返す（読み込み中なら同じ Promise）
   function prepare(kind) {
     const s = slots[kind];
-    if (!ready) return Promise.resolve(false);
+    if (!ready || !has(s.unit)) return Promise.resolve(false);
     if (s.loaded) return Promise.resolve(true);
     if (!s.pending) {
       s.pending = s.load()
@@ -95,7 +95,7 @@ window.Ads = (() => {
 
   // 全画面広告を表示し、閉じられたら resolve する（読み込めていないときは最大 timeout ミリ秒だけ待ち、だめなら出さずに resolve）
   async function showInterstitial(timeout = 0) {
-    if (!AdMob || showing) return;
+    if (!AdMob || showing || !has('interstitial')) return;
     await initDone;
     if (!ready || !(await ensureLoaded('inter', timeout))) return;
     showing = true; slots.inter.loaded = false;
@@ -109,7 +109,7 @@ window.Ads = (() => {
 
   // リワード広告を表示する。結果は 'rewarded'（最後まで見た）/ 'skipped'（途中で閉じた）/ 'unavailable'（読み込めなかった）
   async function showRewarded() {
-    if (!AdMob || showing) return 'unavailable';
+    if (!AdMob || showing || !has('rewarded')) return 'unavailable';
     await initDone;
     if (!ready || !(await ensureLoaded('reward', 8000))) return 'unavailable';
     showing = true; slots.reward.loaded = false;
@@ -130,7 +130,7 @@ window.Ads = (() => {
     syncBanner();
   }
   async function syncBanner() {
-    if (!AdMob || !ready || banner.busy) return;
+    if (!AdMob || !ready || banner.busy || !has('banner')) return;
     const target = banner.want && !showing ? 'shown' : 'hidden';
     if (target === banner.state || (target === 'hidden' && banner.state === 'none')) return;
     banner.busy = true;
@@ -166,6 +166,7 @@ window.Ads = (() => {
 
   return {
     get available() { return !!AdMob; },
+    get canReward() { return !!AdMob && has('rewarded'); },  // リワード広告(チート)を出せるか
     get showing() { return showing; },
     get privacyOptionsRequired() { return privacyRequired; },
     initDone,
