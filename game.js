@@ -17,7 +17,7 @@
   // タックルが届く範囲。逃げる相手は後ろから足元に飛びつくので広め、向かってくる相手は左右を読ませるので狭め
   const TACKLE_HIT = { flee: { reach: 0.9, r: 1.2 }, attack: { reach: 0.7, r: 0.95 } };
   const GRAB_R = 1.0; // 選手B がこぼれ球に触れて奪える距離
-  const SLOW_T = 0.7, SLOW_K = 0.3; // タックルの瞬間のスローモーション(実時間・倍率)
+  const SLOW_T = 0.35, SLOW_K = 0.3; // タックルの瞬間のスローモーション(実時間・倍率)
   const DT = 1 / 120;
   const t = (k, v) => I18N.t(k, v);
 
@@ -332,7 +332,7 @@
     const dashing = !!inp && inp.dash && mag > 0.1 && P.stamina > 0;
     P.dashing = dashing;
     const top = dashing ? DASH : WALK;
-    steer(P, mx * top, my * top, ACC, dt);
+    steer(P, mx * top, my * top, P.acc || ACC, dt);
     if (dashing) P.stamina = Math.max(0, P.stamina - dt);
     else P.stamina = Math.min(STAMINA_MAX, P.stamina + STAMINA_REGEN * dt);
   }
@@ -465,6 +465,9 @@
     p.spillAt = 0; // 猶予時間は B に切り替わってから数える
     B.stamina = STAMINA_MAX;
     B.crouch = false;
+    // 並走の勢いはここで落とし、カーソルを倒した向きにすぐ走り出せるようにする
+    B.vx *= 0.25; B.vy *= 0.25;
+    B.acc = 48;
     state.camF = p.F;
     state.viewCut = true;
     state.msg = { key: 'msg.loose', t: 0 };
