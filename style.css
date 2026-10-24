@@ -147,6 +147,31 @@ html, body {
   transform: translateY(2px);
 }
 
+/* タイトル画面の下: バージョン・プライバシーポリシー・広告の設定 */
+#legal {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  z-index: 2;
+  font-family: sans-serif;
+  font-size: 12px;
+  color: #b0bec5;
+}
+
+#legal[hidden],
+#legal [hidden] {
+  display: none;
+}
+
+#legal a {
+  color: #cfe8ff;
+}
+
+#buildInfo {
+  margin-right: 10px;
+  opacity: 0.8;
+}
+
 /* タイトル画面の言語切り替え */
 #langSel {
   position: absolute;
@@ -186,6 +211,59 @@ html, body {
   color: #1b1200;
   font-weight: 900;
   box-shadow: 0 3px 0 #a86a00;
+}
+
+/* 失敗したときの「広告を見てこのプレーをやり直す」(アプリのみ) */
+#redo {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translateX(-50%);
+  width: min(520px, 76%);
+  z-index: 3;
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  background: rgba(8, 14, 28, 0.82);
+  font-family: sans-serif;
+  color: #e6eef8;
+  text-align: center;
+}
+
+#redo[hidden] {
+  display: none;
+}
+
+#redo p {
+  margin: 0 0 8px;
+  font-size: clamp(11px, 2.2vh, 14px);
+}
+
+#redo .row {
+  display: flex;
+  gap: 8px;
+}
+
+#redo .sbtn {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font: inherit;
+  font-weight: 800;
+  font-size: clamp(12px, 2.6vh, 16px);
+  cursor: pointer;
+  background: #dfe7f7;
+  color: #1b2440;
+}
+
+#redo .sbtn.main {
+  flex: 2;
+  background: linear-gradient(#7dffb0, #1fbf63);
+  color: #04210f;
+}
+
+#redo .sbtn:disabled {
+  opacity: 0.6;
 }
 
 /* ポーズ画面のボタン */

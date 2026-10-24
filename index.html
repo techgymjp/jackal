@@ -25,6 +25,11 @@
       <button class="langBtn" type="button" data-lang="ja">日本語</button>
       <button class="langBtn" type="button" data-lang="en">English</button>
     </div>
+    <div id="legal" hidden>
+      <span id="buildInfo"></span>
+      <a href="https://techgym.jp/privacy-policy/" data-i18n-href="url.privacy" data-i18n="legal.privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
+      <span id="adPrivacy" hidden>|<a href="#" id="adPrivacyLink" data-i18n="legal.adSettings">広告の設定</a></span>
+    </div>
     <div id="share" hidden>
       <button id="shareBtn" class="sbtn main" type="button"><span data-i18n="share.btn">📤 結果をシェア</span><small id="shareMsg">成績画像つきでシェアできます</small></button>
       <div class="row">
@@ -37,6 +42,13 @@
         <button id="titleBtn" class="sbtn" type="button" data-i18n="menu.title">タイトルへ</button>
       </div>
     </div>
+    <div id="redo" hidden>
+      <p id="redoNote"></p>
+      <div class="row">
+        <button id="redoWatch" class="sbtn main" type="button">▶ 広告を見てこのプレーをやり直す</button>
+        <button id="redoNext" class="sbtn" type="button">つぎへ</button>
+      </div>
+    </div>
     <div id="pauseMenu" hidden>
       <button id="pauseResume" class="sbtn retry" type="button" data-i18n="menu.resume">再開</button>
       <button id="pauseTitle" class="sbtn" type="button" data-i18n="menu.title">タイトルへ</button>
@@ -46,6 +58,9 @@
 <script src="vendor/three.min.js"></script>
 <script src="i18n.js"></script>
 <script src="sound.js"></script>
+<script src="build-info.js"></script>
+<script src="ads-config.js"></script>
+<script src="ads.js"></script>
 <script src="scene3d.js"></script>
 <script src="game.js"></script>
 </body>

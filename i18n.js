@@ -7,6 +7,9 @@ window.I18N = (() => {
       'doc.title': 'ジャッカル',
       'rotate.msg': 'スマホを横向きにしてください',
       'rotate.sub': 'ジャッカルは横画面で遊ぶゲームです',
+      'legal.privacy': 'プライバシーポリシー',
+      'legal.adSettings': '広告の設定',
+      'url.privacy': 'https://techgym.jp/privacy-policy/',
 
       'btn.front': '前', 'btn.left': '左', 'btn.right': '右', 'btn.dash': 'ダッシュ',
       'btn.tackle': 'タックル',
@@ -64,12 +67,18 @@ window.I18N = (() => {
       'over.line1': 'SCORE {s}   タックル {k}/{t}   最大連続 {m}   {nav}',
       'over.new': 'NEW RECORD!',
       'over.best': 'ベスト: ジャッカル {c} (SCORE {s})',
-      'nav.on': 'ナビあり', 'nav.off': 'ナビなし',
+      'nav.on': 'ナビあり', 'nav.off': 'ナビなし', 'nav.redo': '・やり直し{n}回', 'nav.redo1': '・やり直し1回',
+      'redo.watch': '▶ 広告を見てこのプレーをやり直す',
+      'redo.next': 'つぎへ ({s})',
+      'redo.loading': '広告を読み込み中…',
+      'redo.fail': '広告を読み込めませんでした',
+      'redo.note': '失敗したプレーをもう一度できます(このゲームであと {n} 回)',
       'over.retryBtn': 'もう一度',
       'menu.resume': '再開', 'menu.title': 'タイトルへ',
 
       'share.btn': '📤 結果をシェア', 'share.post': '𝕏 ポスト', 'share.copy': 'コピー',
-      'share.title': 'ジャッカル',
+      'share.title': 'ジャッカル', 'share.dialog': '結果をシェア',
+      'share.msg.native': '共有メニューからシェアできます',
       'share.msg.image': '成績画像つきでシェアできます',
       'share.msg.links': 'X・LINE・コピーからシェアしてください',
       'share.copied': '結果をコピーしました!SNSに貼り付けてください',
@@ -86,6 +95,9 @@ window.I18N = (() => {
       'doc.title': 'Jackal',
       'rotate.msg': 'Please rotate your phone to landscape',
       'rotate.sub': 'Jackal is played in landscape mode',
+      'legal.privacy': 'Privacy Policy',
+      'legal.adSettings': 'Ad settings',
+      'url.privacy': 'https://techgym.jp/privacy-policy-en/',
 
       'btn.front': 'FWD', 'btn.left': 'LEFT', 'btn.right': 'RIGHT', 'btn.dash': 'DASH',
       'btn.tackle': 'TACKLE',
@@ -143,12 +155,18 @@ window.I18N = (() => {
       'over.line1': 'SCORE {s}   Tackles {k}/{t}   Best streak {m}   {nav}',
       'over.new': 'NEW RECORD!',
       'over.best': 'Best: {c} jackals (SCORE {s})',
-      'nav.on': 'NAV on', 'nav.off': 'NAV off',
+      'nav.on': 'NAV on', 'nav.off': 'NAV off', 'nav.redo': ', {n} redos', 'nav.redo1': ', 1 redo',
+      'redo.watch': '▶ Watch an ad to retry this play',
+      'redo.next': 'Next ({s})',
+      'redo.loading': 'Loading ad…',
+      'redo.fail': 'Could not load an ad',
+      'redo.note': 'Try the play you lost again ({n} left this game)',
       'over.retryBtn': 'Play again',
       'menu.resume': 'Resume', 'menu.title': 'Title',
 
       'share.btn': '📤 Share result', 'share.post': '𝕏 Post', 'share.copy': 'Copy',
-      'share.title': 'Jackal',
+      'share.title': 'Jackal', 'share.dialog': 'Share result',
+      'share.msg.native': 'Share from the share menu',
       'share.msg.image': 'Share with a result card image',
       'share.msg.links': 'Share via X, LINE or copy',
       'share.copied': 'Copied! Paste it into your social media',
@@ -178,11 +196,12 @@ window.I18N = (() => {
     return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m)) : s;
   }
 
-  // data-i18n の付いた要素を書き換える
+  // data-i18n(文字)/ data-i18n-href(リンク先)の付いた要素を書き換える
   function apply() {
     document.documentElement.lang = lang;
     document.title = t('doc.title');
     document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-href]').forEach((el) => { el.href = t(el.dataset.i18nHref); });
     document.querySelectorAll('[data-lang]').forEach((el) => el.classList.toggle('on', el.dataset.lang === lang));
   }
 

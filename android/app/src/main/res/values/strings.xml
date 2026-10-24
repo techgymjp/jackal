@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ジャッカル</string>
+    <string name="title_activity_main">ジャッカル</string>
+    <string name="package_name">jp.techgym.jackal</string>
+    <string name="custom_url_scheme">jp.techgym.jackal</string>
+    <!-- AdMob のアプリ ID。ジャッカル用のアプリ ID ができたら差し替える(今は Google 公式のテスト用アプリ ID) -->
+    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+</resources>
