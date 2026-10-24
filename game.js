@@ -12,9 +12,10 @@
   const TOTAL = 20;
 
   const WALK = 6.0, DASH = 8.8, ACC = 26;
-  const STAMINA_MAX = 4.5, STAMINA_REGEN = 0.4;
-  const TACKLE_T = 0.38, TACKLE_V = 8.5, DOWN_T = 0.9;
-  const TACKLE_REACH = 0.7, TACKLE_R = 0.95;
+  const STAMINA_MAX = 6.0, STAMINA_REGEN = 0.5;
+  const TACKLE_T = 0.42, TACKLE_V = 10.0, DOWN_T = 0.9;
+  // タックルが届く範囲。逃げる相手は後ろから足元に飛びつくので広め、向かってくる相手は左右を読ませるので狭め
+  const TACKLE_HIT = { flee: { reach: 0.9, r: 1.2 }, attack: { reach: 0.7, r: 0.95 } };
   const POUNCE_T = 0.38, POUNCE_V = 7.0, GRAB_REACH = 0.75, GRAB_R = 0.95;
   const SLOW_T = 0.7, SLOW_K = 0.3; // タックルの瞬間のスローモーション(実時間・倍率)
   const DT = 1 / 120;
@@ -109,7 +110,7 @@
     // 円の方角合わせ: 16方位にスナップ
     const step = Math.PI / 8;
     const ang = Math.round(Math.atan2(dx, -dy) / step) * step;
-    const mag = Math.min(1, (d - RING.dead) / (RING.r * 0.6));
+    const mag = Math.min(1, (d - RING.dead) / (RING.r * 0.45)); // 少し倒すだけで全速
     ringInput.mx = Math.sin(ang) * mag;
     ringInput.my = Math.cos(ang) * mag;
   }
@@ -236,14 +237,14 @@
     if (type === 'flee') {
       play.ax = rand(-8, 8); play.ay = rand(2, 10);
       play.cx = play.ax + rand(-2.5, 2.5); play.cy = play.ay + rand(7, 8.5) + lv * 1.0;
-      play.speed = 6.4 + 0.95 * lv;
+      play.speed = 6.0 + 0.9 * lv;
       play.weave = lv > 0.25 ? rand(0, 1.8 * lv) : 0;
       play.weaveW = rand(1.4, 2.4);
     } else {
       play.ax = rand(-8, 8); play.ay = rand(-22, -12);
       play.cx = play.ax + rand(-3, 3); play.cy = play.ay + rand(15, 18);
       play.speed = 5.6 + 1.5 * lv;
-      play.stepD = rand(4.8, 5.8) - lv * 0.7;           // ステップを切る距離
+      play.stepD = rand(4.8, 5.8) - lv * 0.3;           // ステップを切る距離
       play.stepSide = rng() < 0.5 ? -1 : 1;            // 画面の左(-1)・右(+1)
       play.feint = lv > 0.2 && rng() < 0.15 + 0.5 * lv; // フェイント(逆に振ってから切り返す)
       play.stepV = 5.0 + 1.6 * lv;
@@ -346,7 +347,8 @@
   function startTackle(A, name) {
     const C = state.actors.carrier;
     let d = dirOf(name, state.camF);
-    const cone = name === 'front' ? 0.38 : 0.7;
+    // 向かってくる相手には前タックルの補正をほぼ効かせない(左右を読ませる)
+    const cone = name === 'front' ? (state.play.type === 'attack' ? 0.1 : 0.38) : 0.7;
     const px = C.x + C.vx * 0.2 - A.x, py = C.y + C.vy * 0.2 - A.y, pd = Math.hypot(px, py);
     if (pd < 4.6 && pd > 0.1) {
       const ang = Math.acos(clamp((px * d.x + py * d.y) / pd, -1, 1));
@@ -373,7 +375,8 @@
     if (p.type === 'flee') {
       // 向こうへ逃げる。後半は左右に揺さぶる
       const vx = p.weave ? Math.sin(state.phaseT * p.weaveW) * p.weave * p.weaveW : 0;
-      const sp = p.speed + (Math.hypot(A.x - C.x, A.y - C.y) < 3.5 ? 0.4 : 0);
+      // 逃げ続けると疲れてだんだん遅くなる
+      const sp = p.speed - Math.min(1.2, Math.max(0, state.phaseT - 1.5) * 0.3);
       steer(C, vx, sp, 14, dt);
       C.lean = vx / 6;
     } else {
@@ -381,7 +384,8 @@
       if (C.ai === 'run') {
         // A に向かって走る
         steer(C, clamp((A.x - C.x) * 0.6, -2, 2), -p.speed, 14, dt);
-        if (ahead < p.stepD && ahead > 0) {
+        // フェイントは早めに仕掛け、本当のステップがいつもの距離で始まるようにする
+        if (ahead < p.stepD + (p.feint ? 1.4 : 0) && ahead > 0) {
           const gap = C.x - A.x;
           if (Math.abs(gap) > 2.3) { p.stepSide = Math.sign(gap); p.feint = false; }
           C.ai = p.feint ? 'feint' : 'step';
@@ -408,8 +412,9 @@
   function checkTackle() {
     const A = state.actors.A, C = state.actors.carrier;
     if (A.mode !== 'tackle' || C.mode === 'tackled') return;
-    const hx = A.x + A.dir.x * TACKLE_REACH, hy = A.y + A.dir.y * TACKLE_REACH;
-    if (Math.hypot(C.x - hx, C.y - hy) > TACKLE_R) return;
+    const th = TACKLE_HIT[state.play.type];
+    const hx = A.x + A.dir.x * th.reach, hy = A.y + A.dir.y * th.reach;
+    if (Math.hypot(C.x - hx, C.y - hy) > th.r) return;
     onTackle(A, C);
   }
 
@@ -824,12 +829,12 @@
 
   // ナビ: タックルが届くタイミングで相手の足元に輪、こぼれ球の行き先に輪
   function wouldHit(A, C, name) {
-    const d = dirOf(name, state.camF);
+    const d = dirOf(name, state.camF), th = TACKLE_HIT[state.play.type];
     let ax = A.x, ay = A.y, cx = C.x, cy = C.y;
     for (let tt = 0; tt < TACKLE_T; tt += 0.02) {
       ax += d.x * TACKLE_V * 0.02; ay += d.y * TACKLE_V * 0.02;
       cx += C.vx * 0.02; cy += C.vy * 0.02;
-      if (Math.hypot(cx - (ax + d.x * TACKLE_REACH), cy - (ay + d.y * TACKLE_REACH)) < TACKLE_R) return true;
+      if (Math.hypot(cx - (ax + d.x * th.reach), cy - (ay + d.y * th.reach)) < th.r) return true;
     }
     return false;
   }
@@ -1100,6 +1105,31 @@
     ctx.restore();
   }
 
+  // 「おいかけろ」「とめろ」の大きな掛け声。準備中から走り出した直後まで出して、ふくらんで消える
+  function drawCall() {
+    const p = state.play;
+    if (!p || state.paused) return;
+    let a = 0, k = 1;
+    if (state.phase === 'ready') { a = Math.min(1, state.phaseT / 0.2); k = 1 + Math.max(0, 0.2 - state.phaseT) * 2.5; }
+    else if (state.phase === 'chase' && state.phaseT < 0.9) { a = 1 - state.phaseT / 0.9; k = 1 + state.phaseT * 0.5; }
+    if (a <= 0) return;
+    const text = t(p.type === 'flee' ? 'call.flee' : 'call.attack');
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(W / 2, 315);
+    ctx.scale(k, k);
+    ctx.font = '900 104px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.strokeText(text, 0, 0, W - 80);
+    ctx.fillStyle = p.type === 'flee' ? '#ffe14d' : '#ff5a4a';
+    ctx.fillText(text, 0, 0, W - 80);
+    ctx.restore();
+  }
+
   function centerText(text, y, size, color = '#fff', weight = 'bold') {
     ctx.font = `${weight} ${size}px sans-serif`;
     ctx.textAlign = 'center';
@@ -1260,9 +1290,10 @@
       drawPopups();
       if (state.phase === 'ready' && !state.paused) {
         const p = state.play;
-        centerText(t('ready.play', { n: state.index + 1 }), 240, 44, '#ffffff', '900');
-        centerText(t(p.type === 'flee' ? 'ready.flee' : 'ready.attack'), 284, 24, '#ffcc80');
+        centerText(t('ready.play', { n: state.index + 1 }), 200, 34, '#ffffff', '900');
+        centerText(t(p.type === 'flee' ? 'ready.flee' : 'ready.attack'), 405, 22, '#ffcc80');
       }
+      drawCall();
       if (state.paused && !isPortrait()) {
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, W, H);
         centerText('PAUSE', H * 0.3, 56);
@@ -1427,6 +1458,6 @@
     hold: false,
     state, newGame, update, DT, TOTAL,
     setBot(fn) { bot = fn; },
-    consts: { TACKLE_T, TACKLE_V, TACKLE_REACH, TACKLE_R, POUNCE_T, POUNCE_V, WALK, DASH },
+    consts: { TACKLE_T, TACKLE_V, TACKLE_HIT, POUNCE_T, POUNCE_V, WALK, DASH },
   };
 })();
