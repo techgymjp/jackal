@@ -624,7 +624,7 @@
     state.streak = 0;
     state.lastResult = { ok: false, key };
     state.msg = null;
-    popup(t(key), '#ff6b6b', 44);
+    popup(t(key), '#ff6b6b', 44, 0, 2.6); // 失敗の様子を見届けられるよう長めに出す
     Sound.sigh(key === 'miss.try' ? 1.3 : 1);
     endPlay();
     offerRedo();
@@ -635,8 +635,8 @@
     state.phaseT = 0;
   }
 
-  function popup(text, color, size, delay = 0) {
-    state.popups.push({ text, color, size, t: -delay, life: 1.6, idx: state.popups.length });
+  function popup(text, color, size, delay = 0, life = 1.6) {
+    state.popups.push({ text, color, size, t: -delay, life, idx: state.popups.length });
   }
 
   // 周りの選手(雰囲気づくり): ボールの周りに集まってくる。こぼれ球の場面での立ち位置 [右へ, 前へ](B から見て)
@@ -680,7 +680,7 @@
       return;
     }
     if (b.holder === 'support') {
-      steer(S, 0, -p.S * 6, 12, dt);
+      steer(S, 0, -p.S * 4.5, 12, dt); // ボールを抱えて走り去る(見届けられる速さで)
       integrate(S, dt);
       return;
     }
@@ -802,7 +802,7 @@
       state.msg = { key: p.type === 'flee' ? 'msg.flee' : 'msg.attack', t: 0 };
       Sound.whistle(0.5);
     }
-    if (state.phase === 'result' && state.phaseT >= 2.3 && !redo.active) {
+    if (state.phase === 'result' && state.phaseT >= 2.3 && !redo.active && !(redo.pending > 0)) {
       state.index++;
       if (state.index >= TOTAL) gameOver();
       else startPlay();
@@ -843,7 +843,13 @@
     const a = state.actors, p = state.play;
     const useB = controllingB();
     const P = useB ? a.B : a.A;
-    const F = state.camF;
+    let F = state.camF;
+    // 失敗したら、ボールを持って走り去る相手のほうへカメラを向けて見届ける
+    if (state.phase === 'result' && state.lastResult && !state.lastResult.ok) {
+      const h = state.ball && state.ball.holder && a[state.ball.holder];
+      const dx = h ? h.x - P.x : 0, dy = h ? h.y - P.y : 0, d = Math.hypot(dx, dy);
+      if (d > 2) F = { x: dx / d, y: dy / d };
+    }
     state.view = {
       x: P.x, y: P.y, fx: F.x, fy: F.y,
       // 選手A のときは少し高くして、A の頭越しにボールキャリアが見えるようにする
@@ -1392,15 +1398,20 @@
   }
 
   // ---------- リワード広告のチート: 失敗したプレーをやり直す(アプリのみ・1 ゲーム 5 回まで) ----------
-  // プレーに失敗したら「広告を見てこのプレーをやり直す」を出す。見終わると、そのプレーの成績を取り消して同じプレーをもう一度
+  // プレーに失敗したら「広告を見てこのプレーをやり直す」を出す。見終わると、そのプレーの成績を取り消して同じプレーをもう一度。
+  // 相手がボールを拾って走り去るところ(失敗の様子)を見届けられるよう、少し待ってから出す
+  const REDO_DELAY = 2.0;
   const REDO_WAIT = 6;
   const REDO_MAX = 5;
-  const redo = { active: false, busy: false, t: 0 };
+  const redo = { active: false, busy: false, t: 0, pending: 0 };
   const redoEl = $id('redo');
   for (const ev of ['pointerdown', 'pointerup']) redoEl.addEventListener(ev, (e) => e.stopPropagation());
   function offerRedo() {
     if (!Ads.canReward || state.redoUsed >= REDO_MAX) return;
-    Object.assign(redo, { active: true, busy: false, t: REDO_WAIT });
+    redo.pending = REDO_DELAY;
+  }
+  function showRedo() {
+    Object.assign(redo, { active: true, busy: false, t: REDO_WAIT, pending: 0 });
     $id('redoWatch').disabled = false;
     $id('redoWatch').textContent = t('redo.watch');
     $id('redoNote').textContent = t('redo.note', { n: REDO_MAX - state.redoUsed, max: REDO_MAX });
@@ -1408,9 +1419,15 @@
   }
   function closeRedo() {
     redo.active = false;
+    redo.pending = 0;
     redoEl.hidden = true;
   }
   function updateRedo(dt) {
+    if (redo.pending > 0 && !state.paused) {
+      redo.pending -= dt;
+      if (redo.pending <= 0) showRedo();
+      return;
+    }
     if (!redo.active || redo.busy || state.paused) return;
     redo.t -= dt;
     $id('redoNext').textContent = t('redo.next', { s: Math.max(0, Math.ceil(redo.t)) });
