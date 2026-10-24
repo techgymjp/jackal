@@ -16,7 +16,7 @@
   const TACKLE_T = 0.42, TACKLE_V = 10.0, DOWN_T = 0.9;
   // タックルが届く範囲。逃げる相手は後ろから足元に飛びつくので広め、向かってくる相手は左右を読ませるので狭め
   const TACKLE_HIT = { flee: { reach: 0.9, r: 1.2 }, attack: { reach: 0.7, r: 0.95 } };
-  const POUNCE_T = 0.38, POUNCE_V = 7.0, GRAB_REACH = 0.75, GRAB_R = 0.95;
+  const GRAB_R = 1.0; // 選手B がこぼれ球に触れて奪える距離
   const SLOW_T = 0.7, SLOW_K = 0.3; // タックルの瞬間のスローモーション(実時間・倍率)
   const DT = 1 / 120;
   const t = (k, v) => I18N.t(k, v);
@@ -94,10 +94,16 @@
     const r = canvas.getBoundingClientRect();
     return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
   }
+  // タックル成立後は選手B を操作している
+  function controllingB() {
+    return state.phase === 'loose' || (state.phase === 'result' && !!state.play && !!state.play.tackled);
+  }
+
   // 一番近いボタン(スマホは指が太いので、ボタンの外側も少し広めに反応させる)
   function hitButton(p) {
     let best = null, bd = Infinity;
     for (const [name, b] of Object.entries(BTN)) {
+      if (controllingB() && name !== 'dash') continue;
       const d = Math.hypot(p.x - b.x, p.y - b.y) - b.r;
       if (d < bd) { bd = d; best = name; }
     }
@@ -249,11 +255,11 @@
       play.feint = lv > 0.2 && rng() < 0.15 + 0.5 * lv; // フェイント(逆に振ってから切り返す)
       play.stepV = 5.0 + 1.6 * lv;
     }
-    // こぼれ球: 方向とイレギュラーバウンド
-    play.spill = pick(['front', 'left', 'right']);
-    play.hop = lv > 0.3 && rng() < 0.12 + 0.4 * lv ? pick(['front', 'left', 'right'].filter((d) => d !== play.spill)) : null;
-    play.spillDelay = rand(0.35, 1.0);
-    play.window = 1.25 - 0.5 * lv; // こぼれてから相手が拾うまでの時間
+    // こぼれ球: 転がる向き(B から見た角度)・距離とイレギュラーバウンド
+    play.spillAng = rand(-1.9, 1.9);
+    play.spillDist = rand(1.8, 3.6) + lv * 0.8;
+    play.hop = lv > 0.3 && rng() < 0.12 + 0.4 * lv ? (rng() < 0.5 ? -1 : 1) * rand(1.1, 1.8) : 0;
+    play.window = 2.0 - 0.7 * lv; // こぼれてから相手が拾うまでの時間
     return play;
   }
 
@@ -273,7 +279,7 @@
     p.bSide = bs;
     p.bOff = rand(5, 6.3);
     p.bAlong = rand(-1.5, 0.3);
-    const B = actor(C.x + bs * p.bOff, C.y + p.bAlong * p.S, cf);
+    const B = actor(C.x + bs * p.bOff, C.y + p.bAlong * p.S, cf, { stamina: STAMINA_MAX });
     const ref = actor(C.x - bs * 9, C.y - p.S * 6, cf);
     const m = (dx, dy) => actor(clamp(A.x + dx, -HX + 2, HX - 2), A.y + dy, 0);
     const o = (dx, dy) => actor(clamp(C.x + dx, -HX + 2, HX - 2), C.y - p.S * dy, cf);
@@ -318,6 +324,19 @@
     if (faceVel && Math.hypot(p.vx, p.vy) > 0.6) p.face = Math.atan2(p.vx, p.vy);
   }
 
+  // 方角リングとダッシュで走る(選手A・選手B 共通)。inp が null なら止まる
+  function runControl(P, inp, dt) {
+    let mx = inp ? inp.mx : 0, my = inp ? inp.my : 0;
+    let mag = Math.hypot(mx, my);
+    if (mag > 1) { mx /= mag; my /= mag; mag = 1; }
+    const dashing = !!inp && inp.dash && mag > 0.1 && P.stamina > 0;
+    P.dashing = dashing;
+    const top = dashing ? DASH : WALK;
+    steer(P, mx * top, my * top, ACC, dt);
+    if (dashing) P.stamina = Math.max(0, P.stamina - dt);
+    else P.stamina = Math.min(STAMINA_MAX, P.stamina + STAMINA_REGEN * dt);
+  }
+
   // 選手A: 方角リングで移動、ボタンで 前・左・右 にタックル
   function updateA(A, inp, dt, canMove) {
     if (A.mode === 'tackle') {
@@ -328,15 +347,7 @@
       A.vx *= k; A.vy *= k;
       if (A.t >= DOWN_T && !A.stayDown) setMode(A, 'run');
     } else {
-      let mx = canMove ? inp.mx : 0, my = canMove ? inp.my : 0;
-      let mag = Math.hypot(mx, my);
-      if (mag > 1) { mx /= mag; my /= mag; mag = 1; }
-      const dashing = canMove && inp.dash && mag > 0.1 && A.stamina > 0;
-      A.dashing = dashing;
-      const top = dashing ? DASH : WALK;
-      steer(A, mx * top, my * top, ACC, dt);
-      if (dashing) A.stamina = Math.max(0, A.stamina - dt);
-      else A.stamina = Math.min(STAMINA_MAX, A.stamina + STAMINA_REGEN * dt);
+      runControl(A, canMove ? inp : null, dt);
       if (canMove && inp.act) startTackle(A, inp.act);
     }
     integrate(A, dt, A.mode === 'run');
@@ -430,6 +441,12 @@
     const pts = 100 + (p.type === 'attack' ? 50 : 0);
     state.score += pts;
     p.tackled = true;
+    // ボールキャリアが倒れたらすぐボールを手放す(こぼれる)。B のカメラは B からタックル地点の方向
+    const B = state.actors.B;
+    p.T = { x: C.x + C.vx * 0.25, y: C.y + C.vy * 0.25 };
+    const fx = p.T.x - B.x, fy = p.T.y - B.y, fl = Math.hypot(fx, fy);
+    p.F = fl > 1.5 ? { x: fx / fl, y: fy / fl } : { x: -p.bSide, y: 0 };
+    p.spilled = false;
     popup(t(p.type === 'flee' ? 'tackle.chase' : 'tackle.ok'), '#ffffff', 44);
     popup('+' + pts, '#9fe8ff', 24, 0.2);
     Sound.thud();
@@ -439,24 +456,18 @@
     state.slowReal = 0;
   }
 
-  // 選手Bに切り替え: タックル地点の近くへ走り込んで構える
+  // 選手Bに切り替え: 並走していた勢いのまま、方角リングでこぼれ球へ走らせる
   function startLoose() {
-    const p = state.play, B = state.actors.B, C = state.actors.carrier;
+    const p = state.play, B = state.actors.B;
     state.phase = 'loose';
     state.phaseT = 0;
-    p.T = { x: C.x, y: C.y };
-    // B は自分のいた側から、タックル地点の 2.2m 手前(自陣側)に入る
-    const lat = Math.sign(B.x - C.x) || p.bSide;
-    p.Pb = { x: clamp(C.x + lat * 1.6, -HX + 1, HX - 1), y: C.y + p.S * 1.6 };
-    p.arrived = false;
-    p.spilled = false;
-    p.spillAt = null;
-    // カメラ(=ボタンの前・左・右の基準)は B の構える位置からタックル地点へ
-    const fx = p.T.x - p.Pb.x, fy = p.T.y - p.Pb.y, fl = Math.hypot(fx, fy);
-    p.F = { x: fx / fl, y: fy / fl };
+    if (!p.spilled) spill();
+    p.spillAt = 0; // 猶予時間は B に切り替わってから数える
+    B.stamina = STAMINA_MAX;
+    B.crouch = false;
     state.camF = p.F;
     state.viewCut = true;
-    state.msg = { key: 'msg.switch', t: 0 };
+    state.msg = { key: 'msg.loose', t: 0 };
     popup(t('msg.switchBig'), '#ffe14d', 46, 0.05);
     Sound.whoosh();
     // 相手のサポートが拾いに来る(タックル地点の奥から)
@@ -466,33 +477,32 @@
     S.mode = 'run';
   }
 
-  // こぼれ球の行き先(B から見た 前・左・右)
-  function spillTarget(name) {
-    const p = state.play, F = p.F, B = p.Pb;
-    const d = dirOf(name, F);
-    if (name === 'front') return { x: B.x + F.x * 2.4, y: B.y + F.y * 2.4 };
-    return { x: B.x + d.x * 2.4 + F.x * 0.6, y: B.y + d.y * 2.4 + F.y * 0.6 };
+  // タックル地点から、B から見た角度 ang(0 = 奥、+ = 右)へ dist m の地点
+  function spillPoint(from, ang, dist) {
+    const F = state.play.F;
+    const dx = F.x * Math.cos(ang) + F.y * Math.sin(ang), dy = F.y * Math.cos(ang) - F.x * Math.sin(ang);
+    return { x: clamp(from.x + dx * dist, -HX + 1, HX - 1), y: from.y + dy * dist };
   }
 
+  // 倒れたボールキャリアがボールを手放す
   function spill() {
     const p = state.play, b = state.ball;
     p.spilled = true;
-    p.spillAt = state.phaseT;
     b.holder = null;
-    b.x = p.T.x - p.F.x * 0.2; b.y = p.T.y - p.F.y * 0.2; b.z = 0.3;
-    const to1 = spillTarget(p.spill);
-    b.path = [{ from: { x: b.x, y: b.y }, to: to1, dur: 0.42, hop: 0.55 }];
+    const C = state.actors.carrier;
+    b.x = C.x; b.y = C.y; b.z = 0.3;
+    const from = { x: b.x, y: b.y };
+    const to1 = spillPoint(from, p.spillAng, p.spillDist);
+    const dur = (d) => 0.2 + d * 0.12;
     if (p.hop) {
       // イレギュラーバウンド: 途中で別の方向へ跳ねる
-      const mid = { x: (b.x + to1.x) / 2, y: (b.y + to1.y) / 2 };
-      b.path = [{ from: { x: b.x, y: b.y }, to: mid, dur: 0.22, hop: 0.5 }, { from: mid, to: spillTarget(p.hop), dur: 0.36, hop: 0.45 }];
-      p.final = p.hop;
+      const mid = { x: (from.x + to1.x) / 2, y: (from.y + to1.y) / 2 };
+      const to2 = spillPoint(mid, p.spillAng + p.hop, rand(1.6, 2.6));
+      b.path = [{ from, to: mid, dur: dur(p.spillDist / 2), hop: 0.5 }, { from: mid, to: to2, dur: dur(2), hop: 0.45 }];
     } else {
-      p.final = p.spill;
+      b.path = [{ from, to: to1, dur: dur(p.spillDist), hop: 0.55 }];
     }
     b.seg = 0; b.segT = 0; b.yaw = 0; b.spinX = 0;
-    state.actors.carrier.mode = 'tackled';
-    state.msg = { key: 'msg.loose', t: 0 };
     Sound.bounce();
   }
 
@@ -522,73 +532,33 @@
     }
   }
 
-  // 選手B: タックルまでは相手に並走。切り替え後は自動で構え、ボタンでこぼれ球に飛びつく
+  // 選手B: タックルまでは相手に並走。切り替え後は方角リングとダッシュで動かし、ボールに触れたらジャッカル
   function updateB(B, inp, dt) {
     const p = state.play, C = state.actors.carrier;
-    if (!p.T) {
-      if (state.phase !== 'slow') {
-        // 並走: 相手の横を同じ速さで走る
-        const tx = clamp(C.x + p.bSide * p.bOff, -HX + 1, HX - 1), ty = C.y + p.bAlong * p.S;
-        if (state.phase === 'ready') { B.vx = 0; B.vy = 0; } else moveTo(B, tx, ty, 9.5, dt, 22);
-      } else {
-        moveTo(B, C.x + p.bSide * 3, C.y + p.S * 1.5, 7, dt);
-      }
+    if (state.phase === 'ready' || state.phase === 'chase' || (state.phase === 'result' && !p.tackled)) {
+      // 並走: 相手の横を同じ速さで走る
+      const tx = clamp(C.x + p.bSide * p.bOff, -HX + 1, HX - 1), ty = C.y + p.bAlong * p.S;
+      if (state.phase === 'ready') { B.vx = 0; B.vy = 0; } else moveTo(B, tx, ty, 9.5, dt, 22);
       integrate(B, dt);
       return;
     }
-    if (B.mode === 'dive') {
-      B.vx = B.dir.x * POUNCE_V; B.vy = B.dir.y * POUNCE_V;
-      if (B.t >= POUNCE_T) setMode(B, 'down');
-      integrate(B, dt, false);
-      return;
-    }
-    if (B.mode === 'down' || B.mode === 'celebrate' || B.mode === 'jackal') {
+    if (state.phase === 'slow') { integrate(B, dt); return; } // スローの間はそのままの勢いで走る
+    if (B.mode === 'celebrate' || B.mode === 'jackal' || B.mode === 'blown') {
       const k = Math.exp(-7 * dt);
       B.vx *= k; B.vy *= k;
       integrate(B, dt, false);
       if (B.mode === 'jackal' && B.t > 0.45) { setMode(B, 'celebrate'); state.ball.overhead = true; }
       return;
     }
-    if (!p.arrived) {
-      moveTo(B, p.Pb.x, p.Pb.y, 8, dt, 30);
-      integrate(B, dt);
-      if (Math.hypot(B.x - p.Pb.x, B.y - p.Pb.y) < 0.35 || state.phaseT > 1.3) {
-        p.arrived = true;
-        p.arriveT = state.phaseT;
-        B.crouch = true;
-        state.msg = { key: 'msg.wait', t: 0 };
-      }
-      return;
-    }
-    // 構えて待つ
-    steer(B, 0, 0, 30, dt);
-    integrate(B, dt, false);
-    B.face = Math.atan2(p.F.x, p.F.y);
-    if (inp.act) startPounce(B, inp.act);
+    runControl(B, state.phase === 'loose' ? inp : null, dt);
+    integrate(B, dt);
   }
 
-  function startPounce(B, name) {
-    const p = state.play, b = state.ball;
-    let d = dirOf(name, p.F);
-    if (p.spilled && !b.holder) {
-      const px = b.x - B.x, py = b.y - B.y, pd = Math.hypot(px, py);
-      if (pd < 3.8 && pd > 0.1 && Math.acos(clamp((px * d.x + py * d.y) / pd, -1, 1)) < 0.85) d = { x: px / pd, y: py / pd };
-    }
-    p.pressed = name;
-    p.pressT = state.phaseT;
-    p.early = !p.spilled;
-    B.dir = d;
-    B.face = Math.atan2(d.x, d.y);
-    B.crouch = false;
-    setMode(B, 'dive');
-    Sound.lunge();
-  }
-
+  // ボールに触れたら奪う(高く弾んでいる間は届かない)
   function checkGrab() {
-    const B = state.actors.B, b = state.ball, p = state.play;
-    if (B.mode !== 'dive' || b.holder || !p.spilled) return;
-    const hx = B.x + B.dir.x * GRAB_REACH, hy = B.y + B.dir.y * GRAB_REACH;
-    if (b.z > 0.9 || Math.hypot(b.x - hx, b.y - hy) > GRAB_R) return;
+    const B = state.actors.B, b = state.ball;
+    if (b.holder || B.mode !== 'run') return;
+    if (b.z > 0.9 || Math.hypot(b.x - B.x, b.y - B.y) > GRAB_R) return;
     onJackal(B);
   }
 
@@ -597,10 +567,11 @@
     b.holder = 'B'; b.atHands = true; b.path = null;
     setMode(B, 'jackal');
     B.vx *= 0.2; B.vy *= 0.2;
+    B.face = Math.atan2(b.x - B.x, b.y - B.y);
     state.jackals++;
     state.streak++;
     state.bestStreak = Math.max(state.bestStreak, state.streak);
-    const react = Math.max(0, p.pressT - p.spillAt);
+    const react = Math.max(0, state.phaseT - p.spillAt);
     const fast = react < p.window * 0.45;
     let pts = 300 + Math.round(200 * Math.max(0, 1 - react / p.window)) + Math.min(state.streak - 1, 10) * 20;
     if (p.hop) pts += 150;
@@ -708,20 +679,20 @@
       S.face = Math.atan2(b.x - S.x, b.y - S.y);
       return;
     }
-    // こぼれる前はタックル地点、こぼれた後はボールを追う。ちょうど「猶予時間」で届く速さで走る
-    const tx = p.spilled ? b.x : p.T.x - p.S * 1.2, ty = p.spilled ? b.y : p.T.y - p.S * 1.2;
-    const due = p.spilled ? p.spillAt + p.window : (p.arrived ? p.arriveT + p.spillDelay + p.window : 3);
+    if (state.phase === 'slow') { integrate(S, dt); return; }
+    // こぼれ球を追う。ちょうど「猶予時間」で届く速さで走る
+    const due = p.spillAt + p.window;
     const remain = Math.max(0.05, due - state.phaseT);
-    const d = Math.hypot(tx - S.x, ty - S.y);
-    moveTo(S, tx, ty, clamp(d / remain, 2.5, 9.5), dt, 25);
+    const d = Math.hypot(b.x - S.x, b.y - S.y);
+    moveTo(S, b.x, b.y, clamp(d / remain, 2.5, 9.5), dt, 25);
     integrate(S, dt);
-    if (p.spilled && state.phaseT >= due - 0.02 && Math.hypot(b.x - S.x, b.y - S.y) < 1.3 && state.actors.B.mode !== 'dive') {
+    if (state.phase === 'loose' && state.phaseT >= due - 0.02 && d < 1.3) {
       b.holder = 'support'; b.atHands = false; b.path = null;
       S.hasBall = true;
       Sound.grab();
+      fail('miss.slow');
       const B = state.actors.B;
-      fail(p.early ? 'miss.early' : p.pressed ? 'miss.wrong' : 'miss.slow');
-      if (B.mode !== 'down') setMode(B, 'blown');
+      if (Math.hypot(B.x - S.x, B.y - S.y) < 2.5) setMode(B, 'blown');
     }
   }
 
@@ -782,7 +753,7 @@
     const ctrlA = state.phase === 'chase';
     updateA(A, ctrlA ? input : { mx: 0, my: 0, dash: false, act: null }, sdt, ctrlA);
     updateCarrier(a.carrier, sdt);
-    updateB(a.B, state.phase === 'loose' && !p.result ? input : { act: null }, sdt);
+    updateB(a.B, input, sdt);
     updateSupport(a.support, sdt);
     updateExtras(sdt);
     if (state.ball.holder === null) updateBallLoose(state.ball, sdt);
@@ -796,11 +767,10 @@
         if (p.type === 'flee' && C.y - A.y > 22) fail('miss.away');
       }
     }
+    // 倒れたらすぐボールがこぼれる(スローモーションの間に見える)
+    if (state.phase === 'slow' && !p.spilled && a.carrier.t >= 0.3) spill();
     if (state.phase === 'slow' && state.slowReal >= SLOW_T) startLoose();
-    if (state.phase === 'loose') {
-      if (p.arrived && !p.spilled && state.phaseT >= p.arriveT + p.spillDelay) spill();
-      checkGrab();
-    }
+    if (state.phase === 'loose') checkGrab();
     // 選手A はタックルのあと、離れる(ロールアウェイ)
     if ((state.phase === 'loose' || state.phase === 'result') && p.tackled && A.mode === 'down' && A.t > 0.8) {
       const lx = A.x - p.T.x, ly = A.y - p.T.y, ll = Math.hypot(lx, ly) || 1;
@@ -859,17 +829,15 @@
 
   function updateView() {
     const a = state.actors, p = state.play;
-    const useB = state.phase === 'loose' || (state.phase === 'result' && p.T);
+    const useB = controllingB();
     const P = useB ? a.B : a.A;
     const F = state.camF;
-    // B に切り替わった後は、B の構える位置を基準にカメラを固定する(倒れたり飛び込んでもぶれない)
-    const base = useB && p.arrived ? p.Pb : P;
     state.view = {
-      x: base.x, y: base.y, fx: F.x, fy: F.y,
+      x: P.x, y: P.y, fx: F.x, fy: F.y,
       // 選手A のときは少し高くして、A の頭越しにボールキャリアが見えるようにする
-      back: useB ? 5.2 : 6.5, h: useB ? 2.7 : 3.6,
+      back: useB ? 6.0 : 6.5, h: useB ? 3.4 : 3.6,
       // ジャッカル成功のあとは見上げて花火を見せる
-      pitch: state.phase === 'result' && state.lastResult && state.lastResult.ok && state.phaseT > 0.5 ? 0.17 : useB ? -0.13 : -0.08,
+      pitch: state.phase === 'result' && state.lastResult && state.lastResult.ok && state.phaseT > 0.5 ? 0.17 : useB ? -0.12 : -0.08,
       cut: !!state.viewCut,
     };
     state.viewCut = false;
@@ -958,9 +926,9 @@
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`SCORE ${state.score}`, 24, 86);
 
-    // スタミナ(選手A のダッシュ)
-    const A = state.actors.A;
-    const st = A ? A.stamina / STAMINA_MAX : 1;
+    // スタミナ(操作中の選手のダッシュ)
+    const P = controllingB() ? state.actors.B : state.actors.A;
+    const st = P && P.stamina != null ? P.stamina / STAMINA_MAX : 1;
     ctx.fillStyle = '#333';
     ctx.fillRect(24, 94, 246, 8);
     ctx.fillStyle = st > 0.3 ? '#6be37a' : '#ff9a3c';
@@ -972,7 +940,7 @@
     ctx.textAlign = 'left';
 
     // 操作中の選手
-    const who = state.phase === 'loose' || (state.phase === 'result' && state.play && state.play.T) ? 'B' : 'A';
+    const who = controllingB() ? 'B' : 'A';
     ctx.fillStyle = who === 'A' ? 'rgba(200,16,46,0.85)' : 'rgba(255,180,0,0.9)';
     ctx.fillRect(292, 12, 132, 34);
     ctx.fillStyle = who === 'A' ? '#fff' : '#1b1200';
@@ -982,19 +950,18 @@
 
   function btnLabel(name) {
     if (name === 'dash') return [t('btn.dash'), ''];
-    const isB = state.phase === 'loose' || (state.phase === 'result' && state.play && state.play.T);
-    return [t('btn.' + name), t(isB ? 'btn.jackal' : 'btn.tackle')];
+    return [t('btn.' + name), t('btn.tackle')];
   }
 
   function drawControls() {
-    const isB = state.phase === 'loose' || (state.phase === 'result' && state.play && state.play.T);
-    // 方角リング(選手A 用)
+    const isB = controllingB();
+    // 方角リング(選手A・選手B 共通)
     ctx.save();
-    ctx.globalAlpha = isB ? 0.3 : 0.8;
+    ctx.globalAlpha = 0.8;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.arc(RING.x, RING.y, RING.r, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke();
-    const mx = isB ? 0 : input.sx, my = isB ? 0 : input.sy;
+    const mx = input.sx, my = input.sy;
     const mag = Math.hypot(mx, my);
     const cur = mag > 0.1 ? Math.atan2(mx, my) : null;
     for (let i = 0; i < 16; i++) {
@@ -1016,26 +983,20 @@
     const kx = RING.x + mx * RING.r * 0.6, ky = RING.y - my * RING.r * 0.6;
     ctx.fillStyle = mag > 0.1 ? '#ffe14d' : 'rgba(255,255,255,0.6)';
     ctx.beginPath(); ctx.arc(kx, ky, RING.r * 0.17, 0, Math.PI * 2); ctx.fill();
-    if (isB) {
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${Math.round(RING.r * 0.14)}px sans-serif`;
-      ctx.fillText(t('ring.auto'), RING.x, RING.y + 5, RING.r * 1.8);
-    }
     ctx.restore();
 
     // ボタン
     ctx.save();
     for (const [name, b] of Object.entries(BTN)) {
+      if (isB && name !== 'dash') continue; // 選手B は移動とダッシュだけ(タックルボタンは出さない)
       let on = false;
       for (const v of pointers.values()) if (v === name) on = true;
-      if (name === 'dash' && input.dash && !isB) on = true;
-      const dim = name === 'dash' && isB;
+      if (name === 'dash' && input.dash) on = true;
       const hint = state.hintBtn === name && Math.floor(state.time * 10) % 2 === 0;
-      ctx.globalAlpha = dim ? 0.3 : 0.85;
-      ctx.fillStyle = on ? 'rgba(255,225,77,0.9)' : hint ? 'rgba(255,140,60,0.75)' : isB && name !== 'dash' ? 'rgba(120,70,0,0.55)' : 'rgba(0,0,0,0.42)';
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = on ? 'rgba(255,225,77,0.9)' : hint ? 'rgba(255,140,60,0.75)' : 'rgba(0,0,0,0.42)';
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = isB && name !== 'dash' ? 'rgba(255,214,90,0.95)' : 'rgba(255,255,255,0.7)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
       ctx.lineWidth = 2.5; ctx.stroke();
       // 方向の矢印
       if (name !== 'dash') {
@@ -1459,6 +1420,6 @@
     hold: false,
     state, newGame, update, DT, TOTAL,
     setBot(fn) { bot = fn; },
-    consts: { TACKLE_T, TACKLE_V, TACKLE_HIT, POUNCE_T, POUNCE_V, WALK, DASH },
+    consts: { TACKLE_T, TACKLE_V, TACKLE_HIT, GRAB_R, WALK, DASH },
   };
 })();
