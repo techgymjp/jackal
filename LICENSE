@@ -43,5 +43,5 @@ by the terms above:
 - three.js (vendor/three.min.js) — MIT License, Copyright 2010-2023 Three.js Authors.
   See vendor/three.LICENSE.
 
-The Android app also uses Capacitor and @capacitor-community/admob (MIT License), installed
+The Android and iOS apps also use Capacitor and @capacitor-community/admob (MIT License), installed
 from npm at build time.

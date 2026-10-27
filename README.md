@@ -6,7 +6,7 @@
 画面は **味方選手の背中越しの3D視点**。ナイター照明のスタジアムで、選手の動き・ボタン・花火・歓声・質感は
 techgymjp/center-fly(センターフライ)と同じ作りです。
 
-`index.html` をブラウザで開くだけで遊べます(Web 版はビルド不要)。Android アプリ版もあります(下記)。3D描画に同梱の three.js(`vendor/three.min.js`, MIT License)を使っています。
+`index.html` をブラウザで開くだけで遊べます(Web 版はビルド不要)。Android アプリ版と iOS アプリ版もあります(下記)。3D描画に同梱の three.js(`vendor/three.min.js`, MIT License)を使っています。
 GitHub Pages などの静的ホスティングにそのまま置けます。
 
 ## 1 プレーの流れ
@@ -99,6 +99,18 @@ AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `adm
 手元で試すとき: `npm install` → `npm run android:sync` → `npm run android:open`(Android Studio が必要)。
 アイコンと起動画面は `assets/` の元画像から `npx @capacitor/assets generate --android` で生成しています。
 
+## iOS アプリ
+
+Android 版と同じ Capacitor のプロジェクトに `ios/` を足して作っています。構成は techgymjp/jet-fighter(JET STRIKE)と同じです。
+
+- Bundle ID: `jp.techgym.jackal`(Android と同じ)、iPhone 専用・横画面固定・全画面・プレイ中は画面を消さない
+- アプリ名はホーム画面で「ジャッカル」(英語の端末では Jackal)
+- 広告は Android と同じルール。起動時に App Tracking Transparency の確認を出す
+- AdMob の iOS 用の ID は `ios/App/App/Info.plist`(アプリ ID)と `ads.js` の `UNITS.ios.production`(広告ユニット)
+- GitHub Actions(`.github/workflows/ios.yml`)で、push のたびに署名なしでビルドできるかを確かめる
+- ビルドと App Store への提出は Mac の Xcode で行う。手順は `docs/IOS_BUILD.md`
+- App Store 用の画像は `docs/store/ios/`(スクリーンショット 2622×1206 日英各 4 枚、ヘッダ 3840×1646、検索結果 3840×2560)
+
 ## ファイル
 
 | ファイル | 内容 |
@@ -109,6 +121,7 @@ AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `adm
 | `i18n.js` | 日本語 / 英語の文言 |
 | `ads.js` | 広告(Android アプリのときだけ動く) |
 | `android/` | Android アプリのプロジェクト(Capacitor) |
+| `ios/` | iOS アプリのプロジェクト(Capacitor) |
 
 テスト用に `window.Jackal`(`newGame(seed)`、`setBot(fn)`、`forceType` など)を公開しています。
 
@@ -124,4 +137,4 @@ AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `adm
 
 - Play as **Player A**: move with the direction ring and make the tackle. A runner breaking away needs a FORWARD tackle; a runner coming at you sidesteps, so tackle LEFT or RIGHT to the side he steps.
 - Once the tackle is made, you switch to **Player B**, who has been running alongside the ball carrier (B moves on his own). When the ball spills, hit FORWARD / LEFT / RIGHT JACKAL toward it. Win it and the stadium erupts with fireworks and cheers.
-- 20 plays per game. Open `index.html` in a browser to play. An Android app (Capacitor) is also built by GitHub Actions.
+- 20 plays per game. Open `index.html` in a browser to play. Android and iOS apps (Capacitor) are also included.

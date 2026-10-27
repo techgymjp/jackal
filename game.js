@@ -21,7 +21,7 @@
   const DT = 1 / 120;
   const t = (k, v) => I18N.t(k, v);
 
-  // Android アプリ(Capacitor)で動いているか。Web 版では Capacitor がないので何もしない
+  // Android / iOS アプリ(Capacitor)で動いているか。Web 版では Capacitor がないので何もしない
   const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   const plugin = (name) => (NATIVE && window.Capacitor.Plugins ? window.Capacitor.Plugins[name] : null);
 
@@ -714,7 +714,7 @@
 
   // スタートのタップで全画面+横向き固定を試す(Android Chrome など。iPhone は非対応なので何もしない)
   function goLandscape() {
-    if (!isTouch) return;
+    if (!isTouch || NATIVE) return; // アプリは AndroidManifest / Info.plist で横画面に固定している
     const el = document.documentElement;
     const lock = () => {
       if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
