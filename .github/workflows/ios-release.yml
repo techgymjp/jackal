@@ -95,8 +95,18 @@ jobs:
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
         run: |
           mkdir -p "$RUNNER_TEMP/keys"
-          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
-          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+          KEY="$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+          # .p8 を base64 にした文字列でも、.p8 の中身(-----BEGIN PRIVATE KEY-----…)をそのまま貼ったものでも受け付ける
+          if printf '%s' "$ASC_KEY_P8_BASE64" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$ASC_KEY_P8_BASE64" > "$KEY"
+          else
+            printf '%s' "$ASC_KEY_P8_BASE64" | tr -d ' \r\n' | base64 --decode > "$KEY" || true
+          fi
+          if ! grep -q 'BEGIN PRIVATE KEY' "$KEY"; then
+            echo "::error::Secret ASC_KEY_P8_BASE64 から API キー(.p8)を読み取れません。base64 -i AuthKey_XXXXXXXXXX.p8 | tr -d '\n' | pbcopy でコピーした文字列を登録し直してください"
+            exit 1
+          fi
+          echo "ASC_KEY_PATH=$KEY" >> "$GITHUB_ENV"
 
       # 署名は自動(Xcode の設定どおり Team GNM3VTX9YG)。プロファイルは API キーで自動作成する
       - name: Archive
