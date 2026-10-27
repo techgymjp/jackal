@@ -26,7 +26,7 @@ window.Ads = (() => {
       },
       // 本番の広告ユニット(AdMob の iOS アプリ「ジャッカル」)。作成したら ID を入れる
       production: {
-        interstitial: '',
+        interstitial: 'ca-app-pub-6411535997477460/8563017651',
         rewarded: '',
         banner: 'ca-app-pub-6411535997477460/1075409874',
       },
