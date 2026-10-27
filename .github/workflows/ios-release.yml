@@ -30,6 +30,11 @@ jobs:
     if: github.ref_name == github.event.repository.default_branch
     runs-on: macos-latest
     timeout-minutes: 45
+    # shell: bash を明示すると pipefail が付く。付けないと「xcodebuild … | tail」で xcodebuild が失敗しても
+    # ステップが成功扱いになり、アップロードできていないのに緑になる
+    defaults:
+      run:
+        shell: bash
     env:
       HAS_SECRETS: ${{ secrets.IOS_DIST_CERT_P12_BASE64 != '' && secrets.ASC_KEY_P8_BASE64 != '' }}
     steps:
