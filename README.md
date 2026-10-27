@@ -107,7 +107,7 @@ Android 版と同じ Capacitor のプロジェクトに `ios/` を足して作�
 - アプリ名はホーム画面で「ジャッカル」(英語の端末では Jackal)
 - 広告は Android と同じルール。起動時に App Tracking Transparency の確認を出す
 - AdMob の iOS 用の ID は `ios/App/App/Info.plist`(アプリ ID)と `ads.js` の `UNITS.ios.production`(広告ユニット)
-- GitHub Actions(`.github/workflows/ios.yml`)で、push のたびに署名なしでビルドできるかを確かめる
+- GitHub Actions: `.github/workflows/ios.yml` で push のたびに Xcode でビルドできるかを確認(署名なし)、`.github/workflows/ios-release.yml` で本番広告の設定でビルドして TestFlight にアップロード(ビルド番号は実行回数 + 100)
 - ビルドと App Store への提出は Mac の Xcode で行う。手順は `docs/IOS_BUILD.md`
 - App Store 用の画像は `docs/store/ios/`(スクリーンショット 2622×1206 日英各 4 枚、ヘッダ 3840×1646、検索結果 3840×2560)
 

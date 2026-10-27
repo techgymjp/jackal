@@ -192,9 +192,18 @@ base64 -i AuthKey_XXXXXXXXXX.p8 | tr -d '\n' | pbcopy
 
 登録画面は https://github.com/techgymjp/jackal/settings/secrets/actions （リポジトリの「Settings」→「Secrets and variables」→「Actions」→「New repository secret」）です。techgymjp は組織ではなく個人のアカウントなので、全リポジトリ共通の Secrets は使えません。**ほかのゲームでも、そのリポジトリに同じ 5 つを登録します**（.p12・.p8 のファイルとパスワードを保管しておけば、同じものを使い回せます）。
 
-### 7-4. そのあと
+### 7-4. 自動アップロード（設定済み）
 
-登録が終わったら、Claude Code に「iOS の自動アップロードのワークフローを作って」と頼みます。push するたびに、本番広告の設定でビルドし、ビルド番号（Actions の実行回数）を自動で上げて、TestFlight にアップロードするようにします。審査への提出は、これまでどおり App Store Connect で行います。
+**Secrets は登録済みで、自動アップロードのワークフロー（`.github/workflows/ios-release.yml`）も入っています。** 中身は techgymjp/center-fly と同じです。
+
+- 既定ブランチに push するたびに、本番広告の設定でビルドし、App Store Connect（TestFlight）にアップロードします
+- ビルド番号は「Actions の実行回数 + 100」（101、102…）。Mac から手作業でアップロードする番号（1、2、3…）と重なりません
+- Version は `package.json` の version（いまは 1.0.0）。上げるときは `package.json` を変えます
+- 手動で動かすときは、Actions の「iOS release (TestFlight)」→「Run workflow」
+- 審査への提出は、これまでどおり App Store Connect で行います（TestFlight に届いたビルドを 5 章で選ぶ）
+- 前提：App Store Connect に「ジャッカル」（Bundle ID `jp.techgym.jackal`）のアプリを作ってあること
+
+これで Mac での 3 章（Archive とアップロード）は不要になります。Mac は、iPhone に直接入れて試すとき（2 章）と、Xcode の更新が必要なときに使います。
 
 **注意**：証明書（.p12）、そのパスワード、API キー（.p8）は、アップロード鍵と同じく、チャット・AI へのアップロード・リポジトリへのコミットで**絶対に共有しない**でください。誤って共有したら、App Store Connect で API キーを取り消し、証明書も取り消して作り直します。
 
