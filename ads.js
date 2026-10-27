@@ -24,10 +24,10 @@ window.Ads = (() => {
         rewarded: 'ca-app-pub-3940256099942544/1712485313',
         banner: 'ca-app-pub-3940256099942544/2934735716',
       },
-      // 本番の広告ユニット(AdMob の iOS アプリ「ジャッカル」)。作成したら ID を入れる
+      // 本番の広告ユニット(AdMob の iOS アプリ「ジャッカル」)
       production: {
         interstitial: 'ca-app-pub-6411535997477460/8563017651',
-        rewarded: '',
+        rewarded: 'ca-app-pub-6411535997477460/7249935981',
         banner: 'ca-app-pub-6411535997477460/1075409874',
       },
     },

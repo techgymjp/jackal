@@ -10,14 +10,14 @@
 - 広告：AdMob（iOS 用のアプリと広告ユニット）。起動時に「トラッキングの許可」の確認画面が出ます
   - バナー：タイトル・ポーズ・結果画面 ／ 全画面：「もう一度」「タイトルへ」、ポーズからの「再開」のたび ／ リワード：失敗したプレーのやり直し
 
-### AdMob の iOS 用の ID（届いたら Claude Code が入れる）
+### AdMob の iOS 用の ID（設定済み）
 
 | 何 | 場所 |
 | --- | --- |
 | iOS 用アプリ ID（`ca-app-pub-…~…`） | `ios/App/App/Info.plist` の `GADApplicationIdentifier`（設定済み） |
-| 広告ユニット ID（バナー・インタースティシャル・リワード） | `ads.js` の `UNITS.ios.production`（バナーとインタースティシャルは設定済み。空の種類は App Store 用のビルドで出さない） |
+| 広告ユニット ID（バナー・インタースティシャル・リワード） | `ads.js` の `UNITS.ios.production`（3 種類とも設定済み） |
 
-ID が入るまでは、`ios:release` でビルドしても広告は出ません（テスト用の `ios:sync` ではテスト広告が出ます）。**App Store に出す前に必ず ID を入れてもらってください。**
+`ios:release` でビルドすると本番の広告、`ios:sync` ではテスト広告が出ます。
 
 ---
 
