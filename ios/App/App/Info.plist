@@ -28,8 +28,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GADApplicationIdentifier</key>
-	<!-- AdMob の iOS 用アプリ ID。届くまでは Google 公式のテスト用 -->
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-6411535997477460~4204050377</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
