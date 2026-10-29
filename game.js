@@ -1474,9 +1474,12 @@
   for (const ev of ['pointerdown', 'pointerup']) langEl.addEventListener(ev, (e) => e.stopPropagation());
   I18N.onChange(() => { if (!shareEl.hidden) prepareShare(); });
   I18N.apply();
+  // Web 版のタイトル画面には Google Play へのリンクを出す(アプリ版では出さない)
+  const storeEl = $id('storeLink');
+  for (const ev of ['pointerdown', 'pointerup']) storeEl.addEventListener(ev, (e) => e.stopPropagation());
   function updateLangVisibility() {
     const show = state.phase === 'title';
-    if (show === langEl.hidden) { langEl.hidden = !show; legalEl.hidden = !show; }
+    if (show === langEl.hidden) { langEl.hidden = !show; legalEl.hidden = !show; storeEl.hidden = !show || NATIVE; }
   }
 
   // タイトル画面の背景: 選手を並べておく

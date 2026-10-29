@@ -295,3 +295,41 @@ html, body {
   background: #dfe7f7;
   color: #1b2440;
 }
+
+/* タイトル画面左上: Google Play へのリンク(Web 版のみ) */
+#storeLink {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-family: sans-serif;
+  text-decoration: none;
+  line-height: 1.15;
+}
+
+#storeLink[hidden] {
+  display: none;
+}
+
+#storeLink .gp {
+  font-size: 22px;
+  color: #34d17a;
+}
+
+#storeLink small {
+  display: block;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+#storeLink b {
+  font-size: 15px;
+}
