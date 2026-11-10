@@ -87,7 +87,7 @@ GitHub Pages などの静的ホスティングにそのまま置けます。
 
 ビルドは GitHub Actions(`.github/workflows/android.yml`)で行います。
 
-1. `npm ci` → `npm run build`(`www/` に Web ファイルをコピーし、`ads-config.js` と `build-info.js` を生成)→ `npx cap sync android` → `./gradlew assembleDebug`
+1. `npm ci` → `npm run build:app`(`www/` に Web ファイルをコピーし、Web 版だけの部分(Google Play へのリンクなど)を取り除き、`ads-config.js` と `build-info.js` を生成)→ `npx cap sync android` → `./gradlew assembleDebug`
 2. 既定ブランチなら、Release `android-latest` の `jackal.apk` を差し替え(動作確認用・テスト広告)
    - リリース画面: `https://github.com/techgymjp/jackal/releases/tag/android-latest`(QR コード: `docs/apk-qr.png`)
    - APK 直接: `https://github.com/techgymjp/jackal/releases/latest/download/jackal.apk`

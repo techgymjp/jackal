@@ -9,7 +9,9 @@ window.I18N = (() => {
       'rotate.sub': 'ジャッカルは横画面で遊ぶゲームです',
       'legal.privacy': 'プライバシーポリシー',
       'legal.adSettings': '広告の設定',
+      // web-only:start
       'store.get': 'Android アプリ', 'store.name': 'Google Play で入手',
+      // web-only:end
       'url.privacy': 'https://techgym.jp/privacy-policy/',
 
       'btn.front': '前', 'btn.left': '左', 'btn.right': '右', 'btn.dash': 'ダッシュ',
@@ -98,7 +100,9 @@ window.I18N = (() => {
       'rotate.sub': 'Jackal is played in landscape mode',
       'legal.privacy': 'Privacy Policy',
       'legal.adSettings': 'Ad settings',
+      // web-only:start
       'store.get': 'GET IT ON', 'store.name': 'Google Play',
+      // web-only:end
       'url.privacy': 'https://techgym.jp/privacy-policy-en/',
 
       'btn.front': 'FWD', 'btn.left': 'LEFT', 'btn.right': 'RIGHT', 'btn.dash': 'DASH',

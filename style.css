@@ -296,7 +296,8 @@ html, body {
   color: #1b2440;
 }
 
-/* タイトル画面左上: Google Play へのリンク(Web 版のみ) */
+/* web-only:start */
+/* タイトル画面左上: Google Play へのリンク(Web 版のみ。アプリ用のビルドでは取り除く) */
 #storeLink {
   position: absolute;
   left: 12px;
@@ -333,3 +334,4 @@ html, body {
 #storeLink b {
   font-size: 15px;
 }
+/* web-only:end */
